@@ -1,0 +1,922 @@
+<title>Painéis Pré-Pós e Volatilidade — TC Smart Eligibility</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --plane:        #f9f9f7;
+    --surface:      #fcfcfb;
+    --sunken:       #f2f2ee;
+    --ink:          #0b0b0b;
+    --ink-2:        #52514e;
+    --ink-mute:     #898781;
+    --hairline:     #e1e0d9;
+    --rule:         #c3c2b7;
+
+    --accent:       #2a78d6;
+    --meter-track:  #b7d3f6;
+
+    --good:         #0ca30c;
+    --warning:      #fab219;
+    --serious:      #ec835a;
+    --critical:     #d03b3b;
+
+    --dim:          #b0aea5;
+
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --r: 3px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plane:       #0d0d0d;
+      --surface:     #1a1a19;
+      --sunken:      #141413;
+      --ink:         #ffffff;
+      --ink-2:       #c3c2b7;
+      --ink-mute:    #898781;
+      --hairline:    #2c2c2a;
+      --rule:        #383835;
+
+      --accent:      #3987e5;
+      --meter-track: #184f95;
+
+      --dim:         #a3a199;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:       #0d0d0d;
+    --surface:     #1a1a19;
+    --sunken:      #141413;
+    --ink:         #ffffff;
+    --ink-2:       #c3c2b7;
+    --ink-mute:    #898781;
+    --hairline:    #2c2c2a;
+    --rule:        #383835;
+
+    --accent:      #3987e5;
+    --meter-track: #184f95;
+
+    --dim:         #a3a199;
+  }
+
+  body {
+    background: var(--plane);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 24px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* ── masthead ─────────────────────────────────────── */
+
+  .masthead { display: flex; flex-direction: column; gap: 10px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .masthead h1 {
+    font-size: clamp(24px, 3.4vw, 33px);
+    font-weight: 620;
+    letter-spacing: -0.021em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .lede {
+    max-width: 63ch;
+    color: var(--ink-2);
+    font-size: 15px;
+  }
+
+  /* ── control bar ──────────────────────────────────── */
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 20px;
+    padding: 13px 16px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+  }
+
+  .ctl-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .seg { display: flex; gap: 2px; padding: 2px; background: var(--sunken); border-radius: var(--r); }
+
+  .seg button {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    padding: 5px 13px;
+    border: 0;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 0 0 1px var(--hairline);
+  }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .ctl-note {
+    margin-left: auto;
+    font-size: 12.5px;
+    color: var(--ink-mute);
+  }
+
+  /* ── panel ────────────────────────────────────────── */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 16px;
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .panel-head h2 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+
+  .panel-q {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    color: var(--ink-mute);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1px 6px;
+  }
+
+  .panel-sub {
+    flex-basis: 100%;
+    font-size: 13.5px;
+    color: var(--ink-2);
+    max-width: 70ch;
+  }
+
+  .basis {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--sunken);
+    border-radius: 2px;
+    padding: 3px 9px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel-body { padding: 22px; display: flex; flex-direction: column; gap: 32px; }
+
+  .view-toggle {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 22px 18px;
+  }
+
+  .link-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    padding: 2px 0;
+    cursor: pointer;
+  }
+  .link-btn:hover { color: var(--ink); border-bottom-color: var(--ink); }
+  .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ── 2x2 matrix ───────────────────────────────────── */
+
+  .matrix-wrap { overflow-x: auto; }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: 92px 1fr 1fr;
+    gap: 2px;
+    min-width: 520px;
+  }
+
+  .cell-flow {
+    display: none;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .mx-corner { }
+
+  .mx-colhead, .mx-rowhead {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    align-items: center;
+  }
+  .mx-colhead { justify-content: center; padding-bottom: 6px; }
+  .mx-rowhead { padding-right: 10px; text-align: right; justify-content: flex-end; }
+
+  .mx-axis {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  /* Em telas estreitas o 2×2 vira lista: cada célula declara o próprio fluxo,
+     em vez de depender de cabeçalhos que sairiam da tela. Precisa vir depois
+     das regras base — mesma especificidade, quem vence é a ordem. */
+  @media (max-width: 720px) {
+    .matrix { grid-template-columns: 1fr; min-width: 0; gap: 8px; }
+    .mx-corner, .mx-colhead, .mx-rowhead { display: none; }
+    .cell-flow { display: block; }
+  }
+
+  .cell {
+    background: var(--sunken);
+    border-radius: 2px;
+    padding: 15px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-top: 3px solid var(--st);
+    cursor: default;
+    transition: background 120ms ease;
+  }
+  .cell:hover, .cell:focus-visible { background: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline); }
+  .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .cell-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--ink-2);
+  }
+  .glyph { width: 9px; height: 9px; flex: none; background: var(--st); }
+  .glyph.dot { border-radius: 50%; }
+  .glyph.dia { transform: rotate(45deg); }
+  .glyph.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+
+  .cell-pct {
+    font-size: 30px;
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .cell-n {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+  .cell-read {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    margin-top: 4px;
+    text-wrap: pretty;
+  }
+
+  /* ── coverage strip ───────────────────────────────── */
+
+  .coverage {
+    background: var(--sunken);
+    border-radius: 2px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cov-title {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .cov-rows { display: flex; flex-direction: column; gap: 7px; }
+  .cov-row { display: grid; grid-template-columns: minmax(0, 320px) 1fr 108px; align-items: center; gap: 14px; }
+  @media (max-width: 620px) { .cov-row { grid-template-columns: 1fr 108px; } .cov-row .cov-bar { display: none; } }
+  .cov-lbl { font-size: 13px; color: var(--ink-2); }
+  .cov-bar { height: 7px; background: var(--meter-track); border-radius: 1px; overflow: hidden; }
+  .cov-fill { height: 100%; background: var(--accent); border-radius: 0 1px 1px 0; }
+  .cov-val {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  /* ── meter ────────────────────────────────────────── */
+
+  .block-title {
+    font-size: 14px;
+    font-weight: 590;
+    margin-bottom: 3px;
+  }
+  .block-note { font-size: 13px; color: var(--ink-2); max-width: 68ch; }
+
+  .meter { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .meter-bar {
+    height: 34px;
+    background: var(--meter-track);
+    border-radius: 2px;
+    display: flex;
+    position: relative;
+  }
+  .meter-fill {
+    background: var(--accent);
+    border-radius: 2px 0 0 2px;
+    height: 100%;
+    transition: width 260ms ease;
+  }
+  .meter-legend { display: flex; flex-wrap: wrap; gap: 8px 26px; }
+  .mlg { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  .mlg b { font-family: var(--mono); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .gap-callout {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-left: 3px solid var(--accent);
+    background: var(--sunken);
+    border-radius: 0 2px 2px 0;
+    font-size: 13.5px;
+    color: var(--ink-2);
+  }
+  .gap-callout strong { color: var(--ink); font-weight: 600; }
+
+  /* ── emphasis bar ─────────────────────────────────── */
+
+  .ebar { display: flex; gap: 2px; height: 34px; margin-top: 14px; }
+  .eseg { border-radius: 2px; transition: flex-grow 260ms ease; cursor: default; }
+  .eseg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .ebar-labels { display: flex; justify-content: space-between; gap: 16px; margin-top: 9px; }
+  .ebl { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .ebl b { font-family: var(--mono); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ── cause rows ───────────────────────────────────── */
+
+  .causes { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .cause {
+    display: grid;
+    grid-template-columns: minmax(0, 330px) 1fr 66px 92px;
+    align-items: center;
+    gap: 14px;
+    padding: 9px 10px;
+    border-radius: 2px;
+  }
+  .cause:hover { background: var(--sunken); }
+  .cause.flag { background: var(--sunken); }
+  @media (max-width: 700px) {
+    .cause { grid-template-columns: 1fr 66px; }
+    .cause .cbar-track, .cause .cver { display: none; }
+  }
+  .cname { font-size: 13.5px; color: var(--ink); display: flex; align-items: center; gap: 9px; }
+  .cbar-track { height: 7px; background: transparent; }
+  .cbar { height: 7px; border-radius: 0 1px 1px 0; transition: width 260ms ease; }
+  .cpp {
+    font-family: var(--mono);
+    font-size: 13px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .cver { font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); text-align: right; }
+  .verdict-ok { color: var(--ink-mute); }
+  .verdict-flag { color: var(--critical); font-weight: 600; }
+
+  .osc {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--critical);
+    border-radius: 2px;
+    background: var(--sunken);
+    margin-top: 6px;
+  }
+  .osc-mark {
+    width: 0; height: 0; flex: none;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid var(--critical);
+  }
+  .osc-txt { font-size: 13.5px; color: var(--ink-2); }
+  .osc-txt strong { color: var(--ink); font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ── table view ───────────────────────────────────── */
+
+  .tableview { display: none; overflow-x: auto; }
+  .tableview.on { display: block; }
+  .viz.off { display: none; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 460px; }
+  caption {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    padding-bottom: 9px;
+  }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--hairline); }
+  th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+  td.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  /* ── tooltip ──────────────────────────────────────── */
+
+  .tip {
+    position: fixed;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 110ms ease, transform 110ms ease;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.16);
+    padding: 9px 11px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    max-width: 260px;
+  }
+  .tip.on { opacity: 1; transform: translateY(0); }
+  .tip b { display: block; color: var(--ink); font-size: 13px; margin-bottom: 2px; }
+  .tip span { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  footer {
+    font-size: 12.5px;
+    color: var(--ink-mute);
+    border-top: 1px solid var(--hairline);
+    padding-top: 18px;
+    max-width: 72ch;
+  }
+  footer code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">TC Smart Eligibility · protótipo de validação</p>
+    <h1>Painel Pré-Pós e Painel de Volatilidade</h1>
+    <p class="lede">
+      Os dois painéis que respondem <strong>P2</strong> (o que o Fluxo de Exceção faz com quem
+      passa por ele) e <strong>P6</strong> (se o produto responde de forma estável). Números
+      fictícios, estrutura real — o objetivo aqui é validar se a leitura acontece antes de
+      investirmos no backend.
+    </p>
+  </header>
+
+  <div class="controls">
+    <span class="ctl-label">Trilho</span>
+    <div class="seg" role="group" aria-label="Selecionar trilho">
+      <button type="button" data-track="tcd0" aria-pressed="true">TCD0</button>
+      <button type="button" data-track="tcd1" aria-pressed="false">TCD1</button>
+    </div>
+    <span class="ctl-label">Período</span>
+    <span style="font-size:13px;color:var(--ink-2)">1 jul – 31 jul 2026</span>
+    <p class="ctl-note">Um filtro só, escopando os dois painéis.</p>
+  </div>
+
+  <!-- ══ PAINEL 1 ══════════════════════════════════════ -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>O que a Exceção faz com quem passa por ela</h2>
+      <span class="panel-q">P2</span>
+      <span class="basis" id="p1-basis"></span>
+      <p class="panel-sub">
+        Decisão real dos modelos <strong>antes</strong> da vigência versus <strong>depois</strong>
+        do término, para o mesmo cliente. Sem viés de seleção: cada cliente é seu próprio controle.
+      </p>
+    </div>
+
+    <div class="panel-body">
+      <div class="viz" id="p1-viz">
+        <div class="matrix-wrap">
+          <div class="matrix">
+            <div class="mx-corner"></div>
+            <div class="mx-colhead">Depois · reprovado</div>
+            <div class="mx-colhead">Depois · aprovado</div>
+
+            <div class="mx-rowhead"><span class="mx-axis">Antes<br>reprovado</span></div>
+            <div class="cell" id="q-furo" tabindex="0" style="--st:var(--critical)">
+              <span class="cell-flow">Reprovado → Reprovado</span>
+              <span class="cell-tag"><i class="glyph"></i>Furo temporário</span>
+              <span class="cell-pct"></span>
+              <span class="cell-n"></span>
+              <span class="cell-read">Entrou no produto sem nunca ser aprovável. A Exceção não mudou o risco — adiou.</span>
+            </div>
+            <div class="cell" id="q-rampa" tabindex="0" style="--st:var(--good)">
+              <span class="cell-flow">Reprovado → Aprovado</span>
+              <span class="cell-tag"><i class="glyph dot"></i>Rampa</span>
+              <span class="cell-pct"></span>
+              <span class="cell-n"></span>
+              <span class="cell-read">Ganhou tempo para construir histórico e passou a ser aprovável. A tese do produto se sustenta.</span>
+            </div>
+
+            <div class="mx-rowhead"><span class="mx-axis">Antes<br>aprovado</span></div>
+            <div class="cell" id="q-piorou" tabindex="0" style="--st:var(--serious)">
+              <span class="cell-flow">Aprovado → Reprovado</span>
+              <span class="cell-tag"><i class="glyph tri"></i>Deteriorou</span>
+              <span class="cell-pct"></span>
+              <span class="cell-n"></span>
+              <span class="cell-read">Perdeu elegibilidade durante a janela. Pequeno, mas é a coorte de maior risco.</span>
+            </div>
+            <div class="cell" id="q-desnec" tabindex="0" style="--st:var(--warning)">
+              <span class="cell-flow">Aprovado → Aprovado</span>
+              <span class="cell-tag"><i class="glyph dia"></i>Desnecessária</span>
+              <span class="cell-pct"></span>
+              <span class="cell-n"></span>
+              <span class="cell-read">Os modelos aprovariam de qualquer forma. Cada caso custou uma análise humana a valor zero.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gap-callout" style="border-left-color:var(--warning);margin-top:18px">
+          <strong id="p1-callout"></strong>
+        </div>
+
+        <div class="coverage" style="margin-top:18px">
+          <span class="cov-title">Cobertura — o que sustenta os números acima</span>
+          <div class="cov-rows">
+            <div class="cov-row">
+              <span class="cov-lbl">Janelas de exceção encerradas no período</span>
+              <div class="cov-bar"><div class="cov-fill" style="width:100%"></div></div>
+              <span class="cov-val">12.400</span>
+            </div>
+            <div class="cov-row">
+              <span class="cov-lbl">…com decisão de modelo antes da vigência</span>
+              <div class="cov-bar"><div class="cov-fill" style="width:72%"></div></div>
+              <span class="cov-val">8.900 · 72%</span>
+            </div>
+            <div class="cov-row">
+              <span class="cov-lbl">…com decisão de modelo após o término</span>
+              <div class="cov-bar"><div class="cov-fill" style="width:77%"></div></div>
+              <span class="cov-val">9.600 · 77%</span>
+            </div>
+            <div class="cov-row">
+              <span class="cov-lbl"><strong>…com as duas — base do painel</strong></span>
+              <div class="cov-bar"><div class="cov-fill" style="width:57%"></div></div>
+              <span class="cov-val">7.100 · 57%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tableview" id="p1-table"></div>
+    </div>
+
+    <div class="view-toggle">
+      <button type="button" class="link-btn" data-toggle="p1">Ver como tabela</button>
+    </div>
+  </section>
+
+  <!-- ══ PAINEL 2 ══════════════════════════════════════ -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>O produto responde de forma estável?</h2>
+      <span class="panel-q">P6</span>
+      <span class="basis" id="p2-basis"></span>
+      <p class="panel-sub">
+        Clientes consultados mais de uma vez podem receber respostas diferentes. A taxa agregada
+        engana — quase todo flip é esperado. O que importa é o que sobra depois de descontar as
+        causas conhecidas.
+      </p>
+    </div>
+
+    <div class="panel-body">
+      <div class="viz" id="p2-viz">
+
+        <div>
+          <p class="block-title">Quantos clientes tiveram resposta inconsistente</p>
+          <p class="block-note">
+            A distância entre "elegível ao menos uma vez" e "elegível em todas as consultas"
+            <em>é</em> a volatilidade — não são duas métricas concorrentes.
+          </p>
+          <div class="meter">
+            <div class="meter-bar">
+              <div class="meter-fill" id="meter-fill"></div>
+            </div>
+            <div class="meter-legend">
+              <span class="mlg"><i class="swatch" style="background:var(--accent)"></i>
+                Elegível em todas as consultas <b id="m-always"></b></span>
+              <span class="mlg"><i class="swatch" style="background:var(--meter-track)"></i>
+                Só em algumas <b id="m-gap"></b></span>
+              <span class="mlg" style="color:var(--ink-mute)">
+                Elegível ao menos uma vez <b id="m-any"></b></span>
+            </div>
+          </div>
+          <div class="gap-callout">
+            <strong id="p2-callout"></strong>
+          </div>
+        </div>
+
+        <div>
+          <p class="block-title">De onde vêm os flips</p>
+          <p class="block-note">
+            Três causas são explicadas pelo próprio dado. A quarta não é — e é a única que
+            merece investigação.
+          </p>
+
+          <div class="ebar">
+            <div class="eseg" id="seg-esperado" tabindex="0" style="background:var(--dim)"></div>
+            <div class="eseg" id="seg-intra" tabindex="0" style="background:var(--critical)"></div>
+          </div>
+          <div class="ebar-labels">
+            <span class="ebl"><i class="swatch" style="background:var(--dim)"></i>
+              Esperado <b id="l-esperado"></b></span>
+            <span class="ebl"><i class="swatch" style="background:var(--critical)"></i>
+              Intra-regime <b id="l-intra"></b></span>
+          </div>
+
+          <div class="causes" id="causes"></div>
+
+          <div class="osc">
+            <i class="osc-mark"></i>
+            <p class="osc-txt" id="osc-txt"></p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tableview" id="p2-table"></div>
+    </div>
+
+    <div class="view-toggle">
+      <button type="button" class="link-btn" data-toggle="p2">Ver como tabela</button>
+    </div>
+  </section>
+
+  <footer>
+    Protótipo de leitura, não de implementação. Os números são fictícios e internamente
+    consistentes; a estrutura, os rótulos e as ressalvas são os que a versão real usaria.
+    O Sankey do funil fica em painel separado — ele não representa volatilidade, e forçá-lo
+    a isso faria um cliente ocupar dois nós terminais ao mesmo tempo.
+  </footer>
+
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<script>
+  const DATA = {
+    tcd0: {
+      basis1: "n = 7.100 · 57% das janelas encerradas",
+      basis2: "41.200 clientes com 2+ consultas · 35% de 118.700",
+      quad: {
+        furo:   { pct: 62, n: 4402 },
+        rampa:  { pct: 23, n: 1633 },
+        desnec: { pct: 12, n: 852 },
+        piorou: { pct: 3,  n: 213 }
+      },
+      callout1: "852 clientes (12%) receberam exceção sem precisar — os modelos os aprovavam antes e depois. É o volume que pode sair do mecanismo sem alterar decisão nenhuma.",
+      any: 68400, always: 52100, gap: 16300, gapPct: 24,
+      callout2: "16.300 clientes receberam respostas diferentes dentro do mesmo período.",
+      flipPct: 18.4, flipN: 7581,
+      causes: [
+        { name: "Entrada ou saída de janela de exceção", pp: 11.2, n: 4614, flag: false },
+        { name: "Mudança de modelo aplicado",            pp: 4.1,  n: 1689, flag: false },
+        { name: "Passou a cair em STAR ou Penhora",      pp: 1.9,  n: 783,  flag: false },
+        { name: "Intra-regime — mesmo gate, mesmo modelo", pp: 1.2, n: 495, flag: true }
+      ],
+      oscPp: 0.4, oscN: 165
+    },
+    tcd1: {
+      basis1: "n = 7.100 · 57% das janelas encerradas",
+      basis2: "41.200 clientes com 2+ consultas · 35% de 118.700",
+      quad: {
+        furo:   { pct: 71, n: 5041 },
+        rampa:  { pct: 16, n: 1136 },
+        desnec: { pct: 10, n: 710 },
+        piorou: { pct: 3,  n: 213 }
+      },
+      callout1: "No trilho mais restritivo, a rampa funciona para menos gente: 71% seguiram inaprováveis depois da janela, contra 62% no TCD0.",
+      any: 54900, always: 39200, gap: 15700, gapPct: 29,
+      callout2: "15.700 clientes receberam respostas diferentes dentro do mesmo período.",
+      flipPct: 21.6, flipN: 8899,
+      causes: [
+        { name: "Entrada ou saída de janela de exceção", pp: 13.1, n: 5397, flag: false },
+        { name: "Mudança de modelo aplicado",            pp: 4.8,  n: 1978, flag: false },
+        { name: "Passou a cair em STAR ou Penhora",      pp: 2.0,  n: 824,  flag: false },
+        { name: "Intra-regime — mesmo gate, mesmo modelo", pp: 1.7, n: 700, flag: true }
+      ],
+      oscPp: 0.6, oscN: 247
+    }
+  };
+
+  const QUADS = [
+    { key: "furo",   id: "q-furo",   label: "Furo temporário", flow: "Reprovado → Reprovado" },
+    { key: "rampa",  id: "q-rampa",  label: "Rampa",           flow: "Reprovado → Aprovado" },
+    { key: "piorou", id: "q-piorou", label: "Deteriorou",      flow: "Aprovado → Reprovado" },
+    { key: "desnec", id: "q-desnec", label: "Desnecessária",   flow: "Aprovado → Aprovado" }
+  ];
+
+  const nf = new Intl.NumberFormat("pt-BR");
+  const pp = v => v.toString().replace(".", ",");
+  let track = "tcd0";
+
+  function render() {
+    const d = DATA[track];
+
+    document.getElementById("p1-basis").textContent = d.basis1;
+    document.getElementById("p2-basis").textContent = d.basis2;
+    document.getElementById("p1-callout").textContent = d.callout1;
+    document.getElementById("p2-callout").textContent = d.callout2;
+
+    QUADS.forEach(q => {
+      const el = document.getElementById(q.id);
+      const v = d.quad[q.key];
+      el.querySelector(".cell-pct").textContent = v.pct + "%";
+      el.querySelector(".cell-n").textContent = nf.format(v.n) + " clientes";
+      el.dataset.tipTitle = q.label + " · " + q.flow;
+      el.dataset.tipBody = nf.format(v.n) + " de " + nf.format(7100) + " clientes (" + v.pct + "%)";
+    });
+
+    // meter
+    const fillPct = (d.always / d.any) * 100;
+    document.getElementById("meter-fill").style.width = fillPct.toFixed(1) + "%";
+    document.getElementById("m-always").textContent = nf.format(d.always);
+    document.getElementById("m-gap").textContent = nf.format(d.gap) + " · " + d.gapPct + "%";
+    document.getElementById("m-any").textContent = nf.format(d.any);
+
+    // emphasis bar
+    const esperado = +(d.flipPct - d.causes[3].pp).toFixed(1);
+    document.getElementById("seg-esperado").style.flexGrow = esperado;
+    document.getElementById("seg-intra").style.flexGrow = d.causes[3].pp;
+    document.getElementById("l-esperado").textContent = pp(esperado) + " pp";
+    document.getElementById("l-intra").textContent = pp(d.causes[3].pp) + " pp";
+    document.getElementById("seg-esperado").dataset.tipTitle = "Flip esperado";
+    document.getElementById("seg-esperado").dataset.tipBody = pp(esperado) + " pp — explicado por janela de exceção, mudança de modelo ou de gate";
+    document.getElementById("seg-intra").dataset.tipTitle = "Flip intra-regime";
+    document.getElementById("seg-intra").dataset.tipBody = pp(d.causes[3].pp) + " pp — mesmo gate, mesmo modelo, decisão diferente. Sem explicação no dado";
+
+    // cause rows
+    const max = Math.max(...d.causes.map(c => c.pp));
+    document.getElementById("causes").innerHTML = d.causes.map(c => `
+      <div class="cause${c.flag ? " flag" : ""}">
+        <span class="cname">
+          <i class="swatch" style="background:${c.flag ? "var(--critical)" : "var(--dim)"}"></i>${c.name}
+        </span>
+        <span class="cbar-track">
+          <span class="cbar" style="display:block;width:${(c.pp / max * 100).toFixed(1)}%;background:${c.flag ? "var(--critical)" : "var(--dim)"}"></span>
+        </span>
+        <span class="cpp">${pp(c.pp)} pp</span>
+        <span class="cver ${c.flag ? "verdict-flag" : "verdict-ok"}">${c.flag ? "investigar" : "esperado"}</span>
+      </div>`).join("");
+
+    document.getElementById("osc-txt").innerHTML =
+      `Dentro do intra-regime, <strong>${nf.format(d.oscN)}</strong> clientes oscilaram mais de uma vez ` +
+      `(${pp(d.oscPp)} pp). Ir e voltar não é evolução de estado — é ruído, e é o indicador mais forte de defeito neste painel.`;
+
+    // tables
+    document.getElementById("p1-table").innerHTML = `
+      <table>
+        <caption>Painel pré-pós — ${track.toUpperCase()} · base 7.100 clientes</caption>
+        <thead><tr><th>Antes</th><th>Depois</th><th>Leitura</th><th class="num">Clientes</th><th class="num">%</th></tr></thead>
+        <tbody>${QUADS.map(q => {
+          const v = d.quad[q.key];
+          const [a, b] = q.flow.split(" → ");
+          return `<tr><td>${a}</td><td>${b}</td><td>${q.label}</td><td class="num">${nf.format(v.n)}</td><td class="num">${v.pct}%</td></tr>`;
+        }).join("")}</tbody>
+      </table>`;
+
+    document.getElementById("p2-table").innerHTML = `
+      <table>
+        <caption>Volatilidade — ${track.toUpperCase()} · base 41.200 clientes com 2+ consultas</caption>
+        <thead><tr><th>Causa do flip</th><th>Veredito</th><th class="num">pp</th><th class="num">Clientes</th></tr></thead>
+        <tbody>
+          ${d.causes.map(c => `<tr><td>${c.name}</td><td>${c.flag ? "investigar" : "esperado"}</td><td class="num">${pp(c.pp)}</td><td class="num">${nf.format(c.n)}</td></tr>`).join("")}
+          <tr><td><strong>Total</strong></td><td>—</td><td class="num"><strong>${pp(d.flipPct)}</strong></td><td class="num"><strong>${nf.format(d.flipN)}</strong></td></tr>
+          <tr><td>… dos quais oscilação</td><td>investigar</td><td class="num">${pp(d.oscPp)}</td><td class="num">${nf.format(d.oscN)}</td></tr>
+        </tbody>
+      </table>`;
+  }
+
+  // track switch
+  document.querySelectorAll(".seg button").forEach(b => {
+    b.addEventListener("click", () => {
+      track = b.dataset.track;
+      document.querySelectorAll(".seg button").forEach(x =>
+        x.setAttribute("aria-pressed", String(x === b)));
+      render();
+    });
+  });
+
+  // table toggles
+  document.querySelectorAll("[data-toggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const p = btn.dataset.toggle;
+      const viz = document.getElementById(p + "-viz");
+      const tbl = document.getElementById(p + "-table");
+      const showTable = !tbl.classList.contains("on");
+      tbl.classList.toggle("on", showTable);
+      viz.classList.toggle("off", showTable);
+      btn.textContent = showTable ? "Ver como gráfico" : "Ver como tabela";
+    });
+  });
+
+  // tooltip
+  const tip = document.getElementById("tip");
+  function showTip(el, x, y) {
+    if (!el.dataset.tipTitle) return;
+    tip.innerHTML = "<b>" + el.dataset.tipTitle + "</b><span>" + el.dataset.tipBody + "</span>";
+    tip.classList.add("on");
+    const r = tip.getBoundingClientRect();
+    let left = x + 14, top = y + 14;
+    if (left + r.width > innerWidth - 12) left = x - r.width - 14;
+    if (top + r.height > innerHeight - 12) top = y - r.height - 14;
+    tip.style.left = Math.max(12, left) + "px";
+    tip.style.top = Math.max(12, top) + "px";
+  }
+  function hideTip() { tip.classList.remove("on"); }
+
+  document.addEventListener("mousemove", e => {
+    const el = e.target.closest("[data-tip-title]");
+    if (el) showTip(el, e.clientX, e.clientY); else hideTip();
+  });
+  document.addEventListener("focusin", e => {
+    const el = e.target.closest("[data-tip-title]");
+    if (el) {
+      const r = el.getBoundingClientRect();
+      showTip(el, r.left + r.width / 2, r.bottom - 10);
+    } else hideTip();
+  });
+  document.addEventListener("focusout", hideTip);
+  document.addEventListener("scroll", hideTip, true);
+
+  render();
+</script>

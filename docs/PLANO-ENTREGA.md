@@ -50,6 +50,42 @@ existem em lugar nenhum. É esse o alvo.
 | **Prazo** | Sem prazo rígido | Construção incremental por fases; cada fase é demonstrável isoladamente e recebe uma tag git. |
 | **Repositório** | Monorepo | `apps/api` + `apps/web` + `packages/contracts`. Tipagem end-to-end, um comando sobe tudo. |
 
+### 2.1. Stack
+
+Ferramentas padrão do time, adotadas sem substituição:
+
+| Camada | Ferramenta |
+|--------|-----------|
+| Runtime | **Node.js** |
+| API | **NestJS** |
+| ORM / persistência | **Sequelize** |
+| Contratos e validação | **Zod** |
+| Front-end | **React** (+ Vite) |
+| Banco | **PostgreSQL** (JSONB) |
+
+**Sequelize e as agregações analíticas.** O ORM cobre modelos, migrations e acesso
+transacional. Mas as consultas que sustentam os painéis — window functions para
+deduplicar por última consulta, `LAG`/`LEAD` para detectar flip, operadores JSONB,
+views materializadas — não são o que um query builder faz bem, e tentar espremê-las no
+builder produz código pior que o SQL equivalente.
+
+A divisão fica explícita:
+
+- **Sequelize (builder):** modelos, migrations, índices GIN e matviews declarados em
+  migration com SQL bruto, escrita e leitura transacional simples
+- **`sequelize.query()` com `replacements` e `QueryTypes.SELECT`:** todas as agregações
+  analíticas — parametrizadas, portanto sem concatenação de string em nenhum caso
+
+Isso não é contornar o ORM; é usá-lo para o que ele resolve e deixar o Postgres fazer
+agregação, coerente com §5.1. As consultas analíticas ficam isoladas nos repositories,
+uma por use case, testáveis contra base real.
+
+**Sequelize e Zod não competem.** São fronteiras diferentes: Sequelize modela a linha
+persistida, Zod modela o contrato que entra e sai da aplicação. A camada anti-corrupção
+(§4.6) é exatamente onde um vira o outro — a linha do Sequelize entra, o objeto de
+domínio validado por Zod sai. Nenhum tipo do ORM vaza para o domínio, para a API ou para
+as tools do agente.
+
 ---
 
 ## 3. Princípios inegociáveis
