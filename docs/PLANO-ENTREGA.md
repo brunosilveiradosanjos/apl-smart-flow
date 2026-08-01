@@ -27,14 +27,17 @@ A entrega é bem-sucedida se o PO conseguir responder, sozinho e em minutos:
 | # | Pergunta | O que ela exige |
 |---|----------|-----------------|
 | **P1** | Qual o volume que entra pelo atalho da Exceção? | Funil com o bypass explícito |
-| **P2** | Quanto risco isso mascara? | Contrafactual sobre a população da Exceção (§6.5) |
-| **P3** | A que custo real? | Cruzamento decisão × outcome (inadimplência / fraude realizada) |
+| **P2** | O que a Exceção realmente faz com quem passa por ela? | Desenho pré-pós sobre janelas encerradas (§6.5) |
+| **P3** | A que custo real? | Taxa de expulsão pós-expiração hoje; outcome financeiro quando existir |
 | **P4** | E se eu mexer nas regras? | Simulador What-If sobre a base |
 | **P5** | Onde a base está inconsistente? | Violação de monotonicidade TCD0/TCD1 (§6.3) |
 | **P6** | O produto responde de forma estável? | Volatilidade de decisão entre consultas (§6.4) |
 
 Responder **P1** é um relatório. **P2**, **P5** e **P6** entregam números que hoje não
 existem em lugar nenhum. É esse o alvo.
+
+> O tratamento aprofundado de granularidade, volatilidade e janela de exceção está em
+> [`ANALISE-TEMPORAL.md`](./ANALISE-TEMPORAL.md).
 
 ---
 
@@ -395,38 +398,38 @@ Duas leituras de negócio saem daqui. A primeira é de experiência: um cliente 
 operacional: se a resposta depende de quando se pergunta, o número de aprovações depende
 do padrão de tráfego de quem integrou, não da base.
 
-### 6.5. Painel do contrafactual (P2)
+### 6.5. Painel da Exceção — desenho pré-pós (P2)
 
-A população da Exceção nunca é avaliada, então o contrafactual não existe no dado. Três
-caminhos, em ordem decrescente de força — o dashboard usa o melhor disponível e rotula
-qual foi:
+A Exceção tem vigência com início e fim, geralmente curta. Logo o mesmo cliente é avaliado
+pelos modelos **fora** da janela, antes ou depois. A decisão que a Exceção suprimiu não é
+inobservável — está em outra linha da tabela, deslocada no tempo.
 
-**a) Observação direta.** Se um mesmo `merchantRef` aparece com `exitGate = EXCEPTION` em
-uma consulta e `exitGate = RISK` em outra, a decisão real dos modelos para aquele cliente
-**está no banco**. Não é estimativa: é medição. Depende de os clientes entrarem e saírem
-do Fluxo de Exceção ao longo do tempo (§11) — se ocorrer com frequência razoável, este
-caminho substitui os demais e é o resultado mais defensável da entrega.
-
-**b) Coorte comparável.** Parear cada cliente da Exceção com clientes de perfil
-equivalente — mesmo status de EC, mesmo modelo elegível, mesmo segmento — que passaram
-pela avaliação normal, usando a taxa de reprovação observada como estimativa. Não exige
-mudança em produção; resultado sempre rotulado como estimativa, com o `n` visível.
-
-**c) Shadow run.** Rodar os modelos em modo sombra para a população da Exceção, sem efeito
-sobre a decisão. Custo baixo, transforma estimativa em medição. Entra como recomendação de
-evolução de produto.
-
-No dataset sintético o gerador produz a decisão sombra verdadeira e a mantém oculta do
-payload padrão, o que permite **medir o erro do método (b)** contra a verdade conhecida.
+Isso substitui a estimativa por coorte comparável e o *shadow run* por **medição direta**,
+num desenho em que o cliente é seu próprio controle — sem viés de seleção, porque não se
+compara quem entrou na Exceção com quem não entrou, e sim o mesmo cliente em dois regimes.
 
 ```
-População via Exceção:              12.400 clientes
-Seria reprovada pelos modelos:       3.720 clientes  (30%)   [observado · n=2.140]
-   ├─ por Fraude:                    1.100
-   ├─ por Crédito:                   2.100
-   └─ por ambos:                       520
-Inadimplência observada no grupo:     8,4%   vs.  2,1% na base aprovada normalmente
+Clientes com janela encerrada e decisão de modelo dos dois lados (n=7.100 · 57% da população)
+
+  Reprovado antes  →  Reprovado depois      62%    a Exceção foi um furo temporário
+  Reprovado antes  →  Aprovado depois       23%    a Exceção funcionou como rampa
+  Aprovado antes   →  Aprovado depois       12%    a Exceção era desnecessária
+  Aprovado antes   →  Reprovado depois       3%    o cliente piorou durante a janela
 ```
+
+O quadrante **Aprovado → Aprovado** é o de maior valor imediato: volume que pode sair da
+Exceção **sem alterar decisão nenhuma**, reduzindo a exposição do mecanismo a custo zero
+de negócio. E o quadrante **Reprovado → Aprovado** impede a leitura ingênua de que a
+Exceção seja apenas um furo: se for relevante, o mecanismo tem função real e o dashboard
+passa a informar como calibrá-lo, não como desligá-lo.
+
+Metodologia, cobertura e ressalvas em [`ANALISE-TEMPORAL.md §2`](./ANALISE-TEMPORAL.md).
+
+**Proxy de outcome disponível hoje (P3):** a coorte *Reprovado depois* mede quantos
+clientes entraram no produto pela Exceção e **perderam elegibilidade assim que a janela
+expirou**. Não é custo financeiro, é custo de decisão e de relacionamento — mas está
+inteiramente no dado atual. Quando o outcome financeiro aparecer, encaixa como coluna
+adicional na mesma tabela, sem redesenho.
 
 ### 6.6. Painel What-If (P4)
 
@@ -604,23 +607,28 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 Hipóteses adotadas para não bloquear a Fase 0.
 
-1. **O campo de data tem hora?** Se for `date` puro, não há como ordenar consultas do
-   mesmo dia — a deduplicação por última consulta e boa parte de P6 perdem base. *Hipótese
-   adotada: timestamp completo.*
-2. **Clientes entram e saem do Fluxo de Exceção ao longo do tempo?** Se sim, o
-   contrafactual vira medição direta (§6.5a) em vez de estimativa — é a diferença entre um
-   número defensável e um número aproximado. *Hipótese adotada: sim, com frequência
-   moderada.*
+1. **Existe tabela de vigência da Exceção**, com início e fim explícitos e consultável? Se
+   sim, as janelas deixam de ser inferidas das consultas e passam a ser fato, e a limitação
+   de cobertura do desenho pré-pós desaparece. É a diferença entre um resultado bom e um
+   resultado inatacável. *Hipótese adotada: não disponível; janelas reconstruídas por gaps
+   and islands.*
+2. **Qual a duração típica da janela de exceção?** Define o horizonte da análise pré-pós.
+   *Hipótese adotada: dias a poucas semanas.*
 3. **Existe fonte que separe cliente novo de vigente inativo** quando `ec` é nulo? Sem
    ela, as duas populações permanecem agrupadas e o dashboard não pode afirmar qual
    predomina. *Hipótese adotada: não disponível; rótulo conjunto.*
-4. **Existe outcome disponível** (inadimplência, fraude confirmada, churn) e em que
-   janela? Sem ele, **P3** não tem resposta. *Hipótese adotada: inadimplência 90d e fraude
-   confirmada, sintéticos.*
-5. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
+4. **Existe outcome financeiro** (inadimplência, fraude confirmada, churn) e em que
+   janela? Em pesquisa pelo time. Não bloqueia: **P3** opera com a taxa de expulsão
+   pós-expiração (§6.5) até que exista. *Hipótese adotada: ausente por ora, plugável.*
+5. **Critério de concessão da Exceção** — campanha, negociação individual, regra
+   automática? Muda a leitura do quadrante *Aprovado → Aprovado*: se a concessão é manual,
+   é esforço humano gasto sem efeito. *Hipótese adotada: mista.*
+6. **A reavaliação após a expiração é automática** ou depende de nova solicitação? Muda a
+   interpretação da taxa de expulsão. *Hipótese adotada: nova consulta espontânea.*
+7. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
    `ExplainDecision`, mas não bloqueiam. *Hipótese adotada: não disponíveis.*
-6. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
+8. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
    casa). *Hipótese adotada: sintéticos, plugáveis quando existirem.*
-7. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
+9. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
    agora. Até lá o dashboard trata modelo como proxy de maturidade e sinaliza o viés de
    seleção.
