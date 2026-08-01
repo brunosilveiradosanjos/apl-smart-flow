@@ -205,7 +205,7 @@ que é o que o domínio, a aplicação e a UI enxergam:
   "elegibilidade":        { "tcd0": 1, "tcd1": 0 },
 
   "isInconsistent": false,        // tcd1 === 1 && tcd0 === 0
-  "inconsistencySource": null     // FRAUD | CREDIT | BOTH | COMBINATION
+  "inconsistencySource": null     // FRAUD | CREDIT | BOTH
 }
 ```
 
@@ -315,19 +315,27 @@ anomalia. Todos os quadrantes são clicáveis e alimentam o drill-down.
 Requisito explícito: expor os casos em que `tcd1 = 1` e `tcd0 = 0`, que ocorrem em
 produção sem que deveriam.
 
-Como a elegibilidade final é AND por trilho, a inconsistência final só existe se pelo
-menos uma das dimensões já estiver inconsistente. Isso torna a **origem rastreável**:
+Duas propriedades reduzem o espaço de investigação antes de qualquer consulta ao banco.
+
+**A inconsistência é sempre herdada, nunca emergente.** Como a combinação é AND por
+trilho, `elegibilidade.tcd1 = 1` exige que *ambas* as dimensões tenham `tcd1 = 1`; e
+`elegibilidade.tcd0 = 0` exige que *ao menos uma* tenha `tcd0 = 0`. Essa dimensão passa
+então a ter `tcd0 = 0` e `tcd1 = 1` — ou seja, já está inconsistente por si só. Não
+existe caso em que o estado inválido surja da composição de duas dimensões válidas.
+
+A consequência é prática: **sempre há um modelo identificável na origem**. A origem se
+resolve em três valores, e não quatro:
 
 | Origem | Condição | Leitura |
 |--------|----------|---------|
 | `FRAUD` | `elegibilidadeFraudes` viola a monotonicidade | O modelo de fraude produz o estado inválido |
 | `CREDIT` | `elegibilidadeCredito` viola | O modelo de crédito produz |
 | `BOTH` | ambas violam | Problema sistêmico |
-| `COMBINATION` | nenhuma viola isoladamente, mas o AND produz o estado | Emerge da composição |
 
-Observação estrutural: nos gates terminais as duas dimensões são sempre idênticas e
-nunca inconsistentes — logo **toda inconsistência nasce no gate 4**. Isso reduz o espaço
-de investigação antes de qualquer consulta.
+**Toda inconsistência nasce no gate 4.** Nos gates terminais as duas dimensões recebem
+valores idênticos (`{1,1}` na Exceção, `{0,0}` em STAR e Penhora/Fumaça), nenhum dos
+quais viola a monotonicidade. Logo `exitGate = RISK` é condição necessária, e a
+investigação começa já restrita à avaliação de risco.
 
 O painel entrega:
 
