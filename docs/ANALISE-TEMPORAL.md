@@ -37,29 +37,50 @@ Linha do tempo de um cliente (cada marca é uma consulta)
 O que eu havia proposto como estimativa por coorte comparável, ou como recomendação de
 *shadow run* em produção, passa a ser **medição direta sobre o dado que já existe**.
 
-### 1.1. Reconstrução das janelas
+### 1.1. As janelas são fato, não inferência
 
-As janelas são recuperáveis das próprias consultas por *gaps and islands*: ordenar por
-`(merchantRef, consultedAt)`, marcar `exitGate = EXCEPTION`, e agrupar sequências
-contíguas usando a diferença entre dois `row_number()`. Cada ilha é uma janela observada;
-as consultas de borda dão o "antes" e o "depois".
+Existe **tabela de vigência da Exceção, com início e fim consultáveis**. Ela é a fonte
+primária das janelas — não é preciso inferi-las do comportamento das consultas.
 
-É trabalho que o Postgres faz nativamente com window functions, o que reforça a decisão de
-agregar no banco em vez de no Node.
+Isso elimina a principal limitação do desenho: a janela é conhecida mesmo para clientes
+pouco consultados, e o "antes" e o "depois" passam a ser recortes temporais precisos em
+vez de bordas observadas por acaso.
 
-**Ressalva de cobertura:** a reconstrução só enxerga o que foi consultado. Um cliente com
-poucas consultas pode ter a janela inteira invisível, ou não ter borda de um dos lados.
-Toda métrica derivada carrega, portanto, um indicador de cobertura:
+A cobertura continua sendo declarada, mas muda de natureza — deixa de ser "não sei quando
+a janela existiu" e passa a ser apenas "não houve consulta nesse recorte":
 
 ```
-População com passagem por Exceção no período:        12.400
-  com decisão de modelo observável antes:              8.900  (72%)
-  com decisão de modelo observável depois:             9.600  (77%)
+Janelas de exceção encerradas no período:             12.400
+  com decisão de modelo antes da vigência:             8.900  (72%)
+  com decisão de modelo após o término:                9.600  (77%)
   com ambas (elegíveis ao desenho pré-pós):            7.100  (57%)
 ```
 
-Sem esse indicador, o resultado seria apresentado como se valesse para toda a população —
-e não vale.
+### 1.2. Auditoria de aplicação da Exceção
+
+Ter a vigência declarada **e** o comportamento observado permite confrontar os dois, o que
+antes era impossível. Duas divergências são detectáveis, e nenhuma é benigna:
+
+| Divergência | Condição | Gravidade |
+|-------------|----------|-----------|
+| **Exceção não aplicada** | Vigência ativa na tabela, mas consulta retornou `exitGate = RISK` | O cliente tinha o benefício concedido e não o recebeu |
+| **Exceção indevida** | Sem vigência ativa, mas consulta retornou `exitGate = EXCEPTION` | Bypass de modelos de risco sem autorização registrada |
+
+O segundo caso é um achado de conformidade: significa que o mecanismo que ignora os
+modelos de crédito e fraude foi acionado fora de qualquer concessão registrada. Mesmo
+volume zero é um resultado que vale reportar — é a prova de que o controle funciona.
+
+Este cruzamento entra como painel próprio, alimentado pelo mesmo contador de qualidade de
+dados da ingestão.
+
+### 1.3. Exceções concedidas e não utilizadas
+
+Com a tabela de vigência, uma população antes invisível fica mensurável: clientes que
+receberam janela de exceção e **não foram consultados durante ela**. A concessão custou
+análise humana (§ *Copiloto*, `PLANO-ENTREGA.md` §8.5) e não produziu efeito nenhum.
+
+Métricas associadas: taxa de não utilização, latência entre concessão e primeira consulta,
+e duração efetivamente aproveitada versus duração concedida.
 
 ---
 
@@ -295,19 +316,45 @@ Para que nada disso seja teatro, o gerador precisa produzir:
 
 ---
 
-## 8. Dúvidas que este documento levanta
+## 8. A concessão é manual — e isso muda a leitura de tudo
 
-1. **Existe uma tabela de vigência da Exceção**, com início e fim explícitos e acessível
-   para consulta? Se sim, as janelas deixam de ser inferidas e passam a ser fato — e a
-   cobertura da §1.1 deixa de ser limitação. É a diferença entre um resultado bom e um
-   resultado inatacável.
-2. **Qual a duração típica da janela?** Define o horizonte da análise pré-pós: se a janela
-   dura dias, o "depois" é rápido; se dura meses, boa parte das janelas ainda estará
-   aberta no período analisado.
-3. **Qual o critério de concessão da Exceção?** Campanha comercial, negociação individual,
-   regra automática? Não bloqueia nada, mas muda completamente a leitura do quadrante
-   *Aprovado → Aprovado*: se a concessão é manual, esse volume é esforço humano gasto sem
-   efeito.
+A Exceção é concedida por **análise humana, sempre**, solicitada por e-mail ou mensagem no
+Teams. Não há critério automatizado, nem registro estruturado do motivo.
+
+Três consequências analíticas imediatas:
+
+**O quadrante *Aprovado → Aprovado* deixa de ser curiosidade e vira desperdício
+quantificável.** Cada caso ali representa um pedido escrito, uma análise humana e uma
+concessão — para um cliente que os modelos aprovariam de qualquer forma. Não é volume
+neutro: é trabalho gasto a valor zero, e agora tem número.
+
+**O quadrante *Reprovado → Reprovado* muda de sentido.** Sem critério registrado, não há
+como saber se a concessão foi um erro de julgamento ou uma decisão comercial deliberada de
+assumir risco. O dashboard mede o resultado, não a intenção — e deve dizer isso
+explicitamente, em vez de sugerir culpa.
+
+**Não existe variável explicativa da concessão.** Como o motivo mora em texto livre de
+e-mail e Teams, nenhum modelo de "por que este cliente recebeu exceção" é construível a
+partir do dado atual. Qualquer correlação encontrada entre perfil e concessão é
+associação, não causa.
+
+A leitura mais ampla é de governança: **um mecanismo que ignora os modelos de crédito e
+fraude é acionado por decisão humana sem registro estruturado, sem reason code e sem
+trilha de auditoria**. Em meios de pagamento isso não é apenas ineficiência de processo.
+
+É também o ponto do sistema onde IA tem o maior retorno — tratado em
+`PLANO-ENTREGA.md` §8.5.
+
+---
+
+## 9. Dúvidas que este documento levanta
+
+1. **Quais campos a tabela de vigência possui?** Solicitante, aprovador, motivo, canal,
+   prazo pedido versus concedido? Cada um destrava uma dimensão de análise do processo.
+2. **Existe registro das solicitações negadas**, ou a tabela guarda apenas as aprovadas?
+   Se guarda só as aprovadas, há viés de sobrevivência: não é possível medir a taxa de
+   aprovação da análise manual, nem aprender com as recusas.
+3. **Qual o volume mensal de solicitações?** Define se o copiloto de concessão se paga.
 4. **A reavaliação após a expiração é automática ou depende de nova solicitação?** Muda a
    interpretação da taxa de expulsão: desligamento ativo do cliente, ou simplesmente
    ausência de nova consulta.

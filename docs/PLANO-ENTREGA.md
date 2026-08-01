@@ -538,6 +538,48 @@ produzir a leitura errada da §4.5.
 - **Guardrails** — allowlist de tools, validação Zod dos argumentos, bloqueio de PII
 - **Prompt caching** para custo previsível
 
+### 8.5. Copiloto de Concessão — onde a IA tem o maior retorno
+
+Toda a camada de IA descrita até aqui serve para **analisar** o que já aconteceu. Mas o
+gargalo real do produto não é analítico: a Exceção é concedida por **análise humana,
+sempre**, a partir de pedidos por e-mail ou Teams, sem critério registrado, sem reason code
+e sem trilha de auditoria.
+
+É o ponto do sistema onde IA tem o maior retorno — e onde ela deixa de ser demonstração
+para virar redução de trabalho mensurável.
+
+**O que o copiloto faz.** Diante de uma solicitação, monta um dossiê de decisão chamando
+os *mesmos use cases* que alimentam o dashboard:
+
+| Evidência | Use case |
+|-----------|----------|
+| O que os modelos dizem sobre este cliente hoje | `ExplainDecision` |
+| Histórico de consultas, flips e estabilidade | `GetVolatilityReport` |
+| Já teve exceção antes? Qual foi o desfecho pré-pós? | `GetExceptionHistory` |
+| Como terminaram clientes de perfil semelhante que receberam exceção | `CompareCohorts` |
+
+O analista recebe evidência consolidada e recomendação com justificativa; **decide**; e a
+decisão é registrada de forma estruturada — quem, quando, por quê, sobre qual evidência.
+
+**O que o copiloto não faz.** Ele não concede exceção. Decisão automatizada sobre acesso a
+crédito tem implicação regulatória direta — inclusive o direito à revisão previsto na LGPD
+— e o desenho é deliberadamente *human-in-the-loop*: a IA reúne e recomenda, a pessoa
+decide. Nenhuma tool do copiloto tem efeito de escrita sobre a vigência.
+
+**A triagem que se paga sozinha.** O quadrante *Aprovado → Aprovado* (§6.5) mostra
+clientes que os modelos aprovariam de qualquer forma. Para esses, a solicitação pode ser
+respondida **sem consumir análise humana** — e isso não é a IA decidindo risco, é a IA
+informando que a pergunta era desnecessária. Segura, defensável, e o ganho é imediato.
+
+**Efeito de segunda ordem.** Cada decisão registrada estruturadamente é dado que hoje não
+existe. O motivo da concessão sai do texto livre e vira variável — o que torna possível,
+pela primeira vez, medir consistência entre analistas, correlacionar motivo com desfecho e
+eventualmente propor critério objetivo. O copiloto **produz a instrumentação que falta**.
+
+Arquiteturalmente, isto é o princípio §3.3 levado ao limite: **uma regra de negócio, três
+consumidores** — dashboard, agente analítico e copiloto de concessão, sem nenhuma
+reimplementação.
+
 ---
 
 ## 9. Fases de entrega
@@ -583,6 +625,19 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 **Pronto quando:** a entrega se defende sozinha sob perguntas técnicas.
 
+### Fase 5 — Copiloto de Concessão *(opcional, alto impacto)*
+- Dossiê de decisão montado sobre os use cases já existentes
+- Triagem automática dos casos que os modelos já aprovam
+- Registro estruturado da decisão humana
+
+**Pronto quando:** uma solicitação real de exceção é respondida com evidência em vez de
+intuição.
+
+Custo marginal baixo — os use cases já existem desde a Fase 2, e o que falta é uma tela e
+um prompt. Fica fora do caminho crítico do desafio, mas é o que transforma a entrega de
+"visibilidade para o PO" em "intervenção no processo". Vale ao menos como protótipo
+demonstrável na apresentação.
+
 ---
 
 ## 10. Riscos e mitigações
@@ -607,28 +662,28 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 Hipóteses adotadas para não bloquear a Fase 0.
 
-1. **Existe tabela de vigência da Exceção**, com início e fim explícitos e consultável? Se
-   sim, as janelas deixam de ser inferidas das consultas e passam a ser fato, e a limitação
-   de cobertura do desenho pré-pós desaparece. É a diferença entre um resultado bom e um
-   resultado inatacável. *Hipótese adotada: não disponível; janelas reconstruídas por gaps
-   and islands.*
-2. **Qual a duração típica da janela de exceção?** Define o horizonte da análise pré-pós.
+1. **Quais campos a tabela de vigência possui?** Solicitante, aprovador, motivo, canal,
+   prazo pedido versus concedido — cada um destrava uma dimensão de análise do processo de
+   concessão. *Hipótese adotada: apenas identificador do cliente, início e fim.*
+2. **Existe registro das solicitações negadas**, ou a tabela guarda só as aprovadas? Se só
+   as aprovadas, há viés de sobrevivência e não é possível medir a taxa de aprovação da
+   análise manual nem aprender com as recusas. *Hipótese adotada: apenas aprovadas.*
+3. **Qual o volume mensal de solicitações de exceção?** Define se a Fase 5 se paga.
+   *Hipótese adotada: volume relevante o suficiente para justificar a triagem.*
+4. **Qual a duração típica da janela de exceção?** Define o horizonte da análise pré-pós.
    *Hipótese adotada: dias a poucas semanas.*
-3. **Existe fonte que separe cliente novo de vigente inativo** quando `ec` é nulo? Sem
+5. **A reavaliação após a expiração é automática** ou depende de nova solicitação? Muda a
+   interpretação da taxa de expulsão. *Hipótese adotada: nova consulta espontânea.*
+6. **Existe fonte que separe cliente novo de vigente inativo** quando `ec` é nulo? Sem
    ela, as duas populações permanecem agrupadas e o dashboard não pode afirmar qual
    predomina. *Hipótese adotada: não disponível; rótulo conjunto.*
-4. **Existe outcome financeiro** (inadimplência, fraude confirmada, churn) e em que
+7. **Existe outcome financeiro** (inadimplência, fraude confirmada, churn) e em que
    janela? Em pesquisa pelo time. Não bloqueia: **P3** opera com a taxa de expulsão
    pós-expiração (§6.5) até que exista. *Hipótese adotada: ausente por ora, plugável.*
-5. **Critério de concessão da Exceção** — campanha, negociação individual, regra
-   automática? Muda a leitura do quadrante *Aprovado → Aprovado*: se a concessão é manual,
-   é esforço humano gasto sem efeito. *Hipótese adotada: mista.*
-6. **A reavaliação após a expiração é automática** ou depende de nova solicitação? Muda a
-   interpretação da taxa de expulsão. *Hipótese adotada: nova consulta espontânea.*
-7. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
+8. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
    `ExplainDecision`, mas não bloqueiam. *Hipótese adotada: não disponíveis.*
-8. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
+9. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
    casa). *Hipótese adotada: sintéticos, plugáveis quando existirem.*
-9. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
-   agora. Até lá o dashboard trata modelo como proxy de maturidade e sinaliza o viés de
-   seleção.
+10. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
+    agora. Até lá o dashboard trata modelo como proxy de maturidade e sinaliza o viés de
+    seleção.
