@@ -14,8 +14,8 @@ problema real.
 
 O Fluxo de Exceção é o **primeiro gate** da avaliação: quem está nele retorna elegível
 para TCD0 e TCD1 imediatamente, sem que Prevenção STAR, Penhora/Fumaça, Fraudes ou
-Crédito sejam sequer consultados. Os campos de elegibilidade do payload vêm preenchidos
-com `1`, mas isso não é resultado de avaliação — é o valor que o atalho grava.
+Crédito sejam sequer consultados. Os campos de elegibilidade vêm preenchidos com `1`,
+mas isso não é resultado de avaliação — é o valor que o atalho grava.
 
 > Para a população que passa pela Exceção, a decisão de risco **nunca é gerada**.
 > Não existe log de override — existe ausência de dado.
@@ -27,13 +27,14 @@ A entrega é bem-sucedida se o PO conseguir responder, sozinho e em minutos:
 | # | Pergunta | O que ela exige |
 |---|----------|-----------------|
 | **P1** | Qual o volume que entra pelo atalho da Exceção? | Funil com o bypass explícito |
-| **P2** | Quanto risco isso mascara? | Contrafactual sobre a população da Exceção (§6.4) |
+| **P2** | Quanto risco isso mascara? | Contrafactual sobre a população da Exceção (§6.5) |
 | **P3** | A que custo real? | Cruzamento decisão × outcome (inadimplência / fraude realizada) |
 | **P4** | E se eu mexer nas regras? | Simulador What-If sobre a base |
-| **P5** | Onde a base está inconsistente? | Detecção de violação de monotonicidade TCD0/TCD1 (§6.3) |
+| **P5** | Onde a base está inconsistente? | Violação de monotonicidade TCD0/TCD1 (§6.3) |
+| **P6** | O produto responde de forma estável? | Volatilidade de decisão entre consultas (§6.4) |
 
-Responder **P1** é um relatório. **P2** e **P5** entregam números que hoje não existem em
-lugar nenhum. É esse o alvo.
+Responder **P1** é um relatório. **P2**, **P5** e **P6** entregam números que hoje não
+existem em lugar nenhum. É esse o alvo.
 
 ---
 
@@ -61,19 +62,17 @@ qualquer valor na tela.
 
 ### 3.2. O LLM nunca vê identificador de pessoa
 
-O campo `id` é CPF/CNPJ — dado pessoal. E o `ec`, que seria a alternativa natural,
-**pode vir nulo** (clientes ainda não credenciados). Não existe, no payload, um
+O campo `id` é CPF/CNPJ — dado pessoal — e é **obrigatório e sempre presente**. O `ec`,
+que seria a alternativa natural, **pode vir nulo**. Não existe no payload um
 identificador simultaneamente não-PII e sempre presente.
 
 Solução: a camada de infraestrutura deriva um **`merchantRef`** — hash determinístico do
 `id` (SHA-256 truncado) — que é a única referência a cliente exposta acima dela.
 
-- Estável ao longo do tempo, permite ligar decisões do mesmo cliente
-- Opaco, não reversível, seguro para frontend, LLM e URL de drill-down
-- Funciona com `ec` nulo
+- Sempre presente, porque o `id` é obrigatório
+- Estável ao longo do tempo, o que viabiliza toda a análise longitudinal (§4.5)
+- Opaco e não reversível: seguro para frontend, LLM e URL de drill-down
 - O `id` não sai da camada de infraestrutura
-
-Quando a base real entrar, não há retrabalho nem risco de vazamento.
 
 ### 3.3. Uma regra de negócio, dois consumidores
 
@@ -84,8 +83,7 @@ o slide de fechamento da apresentação.
 ### 3.4. Um schema, três usos
 
 Cada contrato é definido uma vez em Zod, em `packages/contracts`, e serve como DTO
-validado no NestJS, tipo estático no React e schema da tool exposta ao agente. Uma
-definição, três consumidores, zero divergência.
+validado no NestJS, tipo estático no React e schema da tool exposta ao agente.
 
 ### 3.5. IA entra por último
 
@@ -96,8 +94,6 @@ ninguém conferiu.
 ---
 
 ## 4. O fluxo de elegibilidade real
-
-Sequência de avaliação de uma solicitação, conforme especificado pelo time:
 
 ```
 Solicitação de verificação
@@ -119,20 +115,21 @@ Solicitação de verificação
 
 Regras confirmadas:
 
-- **Gates 1–3 são terminais e binários.** Encerram a avaliação, com resultado idêntico
-  para ambos os trilhos e para ambas as dimensões.
-- **Gate 4 é paralelo e por trilho.** Fraudes e Crédito avaliam simultaneamente, cada um
-  emitindo decisão independente para TCD0 e TCD1.
-- **Combinação é AND por trilho.** Qualquer `0` em uma das dimensões zera a elegibilidade
-  final naquele trilho. Verificado contra todos os exemplos fornecidos.
+- **Gates 1–3 são terminais e binários**, com resultado idêntico nos dois trilhos e nas
+  duas dimensões.
+- **Gate 4 é paralelo e por trilho.**
+- **Combinação é AND por trilho.** Verificado contra todos os exemplos fornecidos.
 - **Monotonicidade esperada:** `tcd1 = 1` deveria implicar `tcd0 = 1`. O estado
-  `{tcd0:0, tcd1:1}` é **inconsistente** — e ocorre em produção hoje (§6.3).
+  `{tcd0:0, tcd1:1}` é inconsistente e ocorre em produção (§6.3).
+- **Invariante do modelo:** sem `ec` resolvido e chegando ao gate 4, o cliente é sempre
+  avaliado por `M1` nas duas dimensões. A recíproca **não** vale — `M1` também ocorre com
+  `ec` presente. Vira regra de validação na ingestão e caso de teste.
 
 ### 4.1. Payload real
 
 ```jsonc
 {
-  "id": "9189ARC9891",                        // CPF/CNPJ alfanumérico — PII
+  "id": "9189ARC9891",                        // CPF/CNPJ — PII, sempre presente
   "ec": 1234567890,                           // 10 posições — PODE SER NULL
   "elegibilidadeFraudes": { "tcd0": 1, "tcd1": 1 },
   "elegibilidadeCredito": { "tcd0": 1, "tcd1": 0 },
@@ -145,8 +142,7 @@ Regras confirmadas:
 
 ### 4.2. Os campos `modelo*` são polimórficos
 
-Este é o achado central da modelagem. `modeloFraudes` e `modeloCredito` carregam **duas
-semânticas distintas** no mesmo campo:
+`modeloFraudes` e `modeloCredito` carregam **duas semânticas distintas** no mesmo campo:
 
 | Valor | Significado | Gate de saída derivado |
 |-------|-------------|------------------------|
@@ -155,42 +151,86 @@ semânticas distintas** no mesmo campo:
 | `PENHORAEFUMACA` | Gate 3 encerrou | `LIEN` |
 | `M1` / `M2` / `M3` | Gate 4 avaliou, com este modelo | `RISK` |
 
-**Consequência prática:** tanto o gate de saída quanto o marcador de passagem pela
-Exceção são **deriváveis do payload atual**. Não é preciso alterar a instrumentação de
-produção — é trabalho de tradução na camada de infraestrutura, que é precisamente o papel
-do Repository Pattern.
+**Consequência prática:** o gate de saída e o marcador de passagem pela Exceção são
+**deriváveis do payload atual**. Não é preciso alterar a instrumentação de produção — é
+trabalho de tradução na camada de infraestrutura, papel do Repository Pattern.
 
-Duas armadilhas que essa modelagem esconde:
+Duas armadilhas embutidas:
 
 **a) `M1` de fraude ≠ `M1` de crédito.** Os conjuntos se sobrepõem nos nomes mas são
-espaços distintos (fraude usa ao menos `M1`/`M2`; crédito usa `M1`/`M2`/`M3`). Um enum
-único permitiria agregações sem sentido, do tipo "taxa de aprovação do M1" somando as
-duas dimensões. No domínio serão **tipos separados** (`FraudModel` e `CreditModel`,
-branded types), impossibilitando a mistura em tempo de compilação.
+espaços distintos. Um enum único permitiria agregações sem sentido, do tipo "taxa de
+aprovação do M1" somando as duas dimensões. No domínio serão **tipos separados**
+(`FraudModel` e `CreditModel`, branded types), impedindo a mistura em tempo de compilação.
 
 **b) O modelo é proxy de maturidade do cliente.** Modelos mais fracos atendem clientes
-novos ou recém-credenciados; mais fortes atendem vigentes ativos. Isso torna o modelo uma
-**dimensão de segmentação disponível de imediato** — sem depender de MCC ou porte. Mas
-também significa que comparar taxa de aprovação entre modelos é **viés de seleção**: são
-populações diferentes, não performances comparáveis. O dashboard sinalizará isso onde a
-comparação aparecer, em vez de bloquear a análise.
+novos ou recém-credenciados; mais fortes atendem vigentes ativos. Isso o torna uma
+**dimensão de segmentação disponível de imediato**, sem depender de MCC ou porte. Mas
+comparar taxa de aprovação entre modelos é **viés de seleção** — populações diferentes,
+não performances comparáveis. O dashboard sinaliza isso onde a comparação aparecer.
 
-### 4.3. Regra de integridade na ingestão
+### 4.3. `ec` nulo não significa "não é cliente Cielo"
+
+Este é o ponto mais fácil de errar na leitura dos dados.
+
+O cruzamento é feito apenas contra a **base de clientes ativos**, por decisão de
+engenharia para reduzir volume. Logo `ec = null` significa **"não resolvido na base
+ativa"**, e agrupa duas populações distintas:
+
+1. **Cliente novo** — quer contratar o TC no ato da filiação e ainda não possui EC
+2. **Cliente vigente inativo** — já é cliente Cielo, mas está fora da base de cruzamento
+
+Consequências:
+
+- O nome `isCredenciado` seria **semanticamente falso**. O modelo de domínio usa
+  `hasResolvedEc`, e a UI rotula como *"sem EC resolvido (novo ou inativo)"*.
+- Existe um **viés de amostragem estrutural no produto**: clientes inativos são tratados
+  como se fossem novos, e recebem sempre o modelo mais fraco (`M1`).
+- Afirmações do tipo *"a Exceção está concentrada em clientes novos"* são **inválidas**
+  sem uma fonte adicional que separe as duas populações (§11).
+
+Esse achado é um entregável em si: o produto tem um ponto cego de segmentação, além do
+ponto cego de decisão da §1.
+
+### 4.4. Regra de integridade na ingestão
 
 Nos gates terminais, `modeloFraudes` e `modeloCredito` carregam sempre o mesmo valor.
-Divergência entre eles (um terminal, outro modelo) é registro corrompido. A validação
-entra na ingestão e alimenta um contador de qualidade de dados na UI.
+Divergência entre eles (um terminal, outro modelo) é registro corrompido. Junto com a
+invariante `ec` nulo → `M1`, alimenta um contador de qualidade de dados na UI.
 
-### 4.4. Modelo de domínio derivado
+### 4.5. Granularidade: consulta ≠ cliente
 
-O payload permanece intocado. A camada de infraestrutura traduz para o modelo abaixo,
-que é o que o domínio, a aplicação e a UI enxergam:
+Um mesmo cliente pode ser consultado **um número indefinido de vezes por dia**. Isso é o
+fato de maior impacto sobre a modelagem analítica, e a fonte de erro mais provável de
+todo o projeto.
+
+**O risco:** se a unidade de análise for a consulta, um cliente integrado que consulta 500
+vezes por dia pesa 500× mais no funil do que um que consulta uma vez. O funil deixaria de
+descrever a base de clientes e passaria a descrever o padrão de tráfego de quem integrou.
+
+**A solução:** duas métricas explicitamente distintas, com alternância visível na UI.
+
+| Métrica | Unidade | Uso |
+|---------|---------|-----|
+| **Clientes distintos** (padrão) | `merchantRef` | Visão de negócio — é o que o PO quer |
+| **Volume de consultas** | registro | Visão operacional — capacidade, custo, tráfego |
+
+**Deduplicação:** ao contar clientes distintos, a decisão representativa no período é a
+**última consulta** (estado corrente). Primeira consulta fica disponível como alternativa,
+para analisar entrada versus estado final.
+
+Isso torna o `merchantRef` (§3.2) infraestrutura crítica, não só uma medida de privacidade:
+sem ele não há como agrupar consultas do mesmo cliente.
+
+### 4.6. Modelo de domínio derivado
+
+O payload permanece intocado. A infraestrutura traduz para o modelo que o domínio, a
+aplicação e a UI enxergam:
 
 ```jsonc
 {
   "merchantRef": "a3f9c2...",     // hash do id — nunca o CPF/CNPJ
-  "ec": 1234567890,               // nullable; null = ainda não credenciado
-  "isCredenciado": true,          // derivado de ec != null
+  "ec": 1234567890,               // nullable
+  "hasResolvedEc": true,          // ec != null — NÃO significa "é credenciado"
   "consultedAt": "2026-07-14T13:22:41Z",
 
   "exitGate": "RISK",             // EXCEPTION | STAR | LIEN | RISK
@@ -217,7 +257,7 @@ Campos ainda dependentes de confirmação (§11): segmentação e outcome.
 
 ```
 apps/web  (React + Vite)
-   │  Sankey por trilho · Painel de Inconsistência · Contrafactual · What-If · Chat
+   │  Sankey por trilho · Inconsistência · Volatilidade · Contrafactual · What-If · Chat
    │
    ▼  HTTP / SSE
 apps/api  (NestJS)
@@ -225,9 +265,9 @@ apps/api  (NestJS)
    ├─ Agent Layer      tools (Zod) = wrappers finos dos use cases
    │                   SEM acesso a banco. SEM SQL gerado por LLM. SEM PII.
    │
-   ├─ Application      GetFunnel · GetInconsistencyReport · GetExceptionCounterfactual
-   │                   SimulateScenario · ExplainDecision · CompareCohorts
-   │                   DetectAnomalies · ValidateEngine
+   ├─ Application      GetFunnel · GetInconsistencyReport · GetVolatilityReport
+   │                   GetExceptionCounterfactual · SimulateScenario · ExplainDecision
+   │                   CompareCohorts · DetectAnomalies · ValidateEngine
    │
    ├─ Domain           motor de regras puro, sem I/O, 100% testável
    │                   entidades: Merchant · Decision · Gate · Track · Rule · Scenario
@@ -238,29 +278,29 @@ apps/api  (NestJS)
 packages/contracts    schemas Zod compartilhados (fonte única de verdade)
 ```
 
-A **camada anti-corrupção (ACL)** na infraestrutura é onde vive toda a tradução da §4.2 e
-§4.4: derivação de `exitGate`, `merchantRef`, `isInconsistent` e a separação de tipos
-entre modelos de fraude e de crédito. O domínio nunca vê o campo polimórfico.
+A **camada anti-corrupção (ACL)** concentra toda a tradução das §4.2 a §4.6: derivação de
+`exitGate`, `merchantRef`, `isInconsistent`, `hasResolvedEc` e a separação de tipos entre
+modelos de fraude e de crédito. O domínio nunca vê o campo polimórfico.
 
 ### 5.1. Agregação fica no Postgres, não no Node
 
-O plano original previa Streams do Node.js para processar a massa. **Revisto.** Trazer
-milhões de linhas para o pod do EKS a fim de agregar em JavaScript é mais lento, mais
-caro e mais frágil do que deixar o banco fazer aquilo em que é bom.
+O plano original previa Streams do Node.js. **Revisto.** Trazer milhões de linhas para o
+pod do EKS a fim de agregar em JavaScript é mais lento, mais caro e mais frágil do que
+deixar o banco fazer aquilo em que é bom. E com múltiplas consultas por cliente por dia
+(§4.5), a tabela é ordens de grandeza maior que a base de clientes — o que torna a decisão
+ainda mais clara.
 
 - Simulação What-If → **SQL parametrizado sobre o JSONB**
-- Índices **GIN** nas keys quentes (`elegibilidadeFraudes`, `elegibilidadeCredito`, …)
+- Índices **GIN** nas keys quentes, e índice de suporte a `(merchantRef, consultedAt)`
+  para a deduplicação por última consulta
 - **Views materializadas** para os cortes fixos do funil, com refresh agendado
 - Node orquestra, valida e tipa; Postgres agrega
 
-Streams permanecem justificados apenas em export linha-a-linha, caso apareça.
-
 ### 5.2. Vercel AI SDK, não LangChain.js
 
-Em um NestJS com injeção de dependência e SOLID, LangChain traz camadas de abstração que
-competem com o container do Nest. O AI SDK é fino, tipado com Zod, tem streaming nativo,
-generative UI de primeira classe e abstração de provider embutida
-(`@ai-sdk/amazon-bedrock`, `@ai-sdk/anthropic`, …) — o que resolve de graça a decisão
+Em um NestJS com injeção de dependência e SOLID, LangChain traz abstrações que competem
+com o container do Nest. O AI SDK é fino, tipado com Zod, tem streaming nativo, generative
+UI de primeira classe e abstração de provider embutida — o que resolve de graça a decisão
 adiada de LLM.
 
 ---
@@ -269,14 +309,13 @@ adiada de LLM.
 
 ### 6.1. Um Sankey por trilho
 
-Sankey representa mal paralelismo e reconvergência, e o gate 4 é exatamente isso. Forçar
-TCD0 e TCD1 num único diagrama produziria um emaranhado ilegível.
+Sankey representa mal paralelismo e reconvergência, e o gate 4 é exatamente isso.
 
 Solução: **um Sankey por trilho, com toggle TCD0 / TCD1**. Dentro de um trilho toda
 decisão é binária e o diagrama fica limpo:
 
 ```
-Solicitações
+Clientes distintos no período
    ├──► Fluxo de Exceção ─────────────────────────────► ELEGÍVEL   ⚠ atalho
    ├──► Prevenção STAR ───────────────────────────────► Inelegível
    ├──► Penhora / Fumaça ─────────────────────────────► Inelegível
@@ -287,20 +326,18 @@ Solicitações
             └──► Aprovado em ambos ───────────────────► ELEGÍVEL
 ```
 
-Decompor o gate 4 por causa revela de imediato **qual modelo é o gargalo dominante** —
-pergunta recorrente de PO que hoje não tem resposta rápida.
+Decompor o gate 4 por causa revela **qual modelo é o gargalo dominante**.
 
 Regras visuais:
 
 - O link da Exceção é o **único elemento em cor de alerta** da tela
-- Rótulo direto: `Exceção: 12.400 ECs · 18% das elegibilidades`
+- Rótulo direto: `Exceção: 12.400 clientes · 18% das elegibilidades`
+- Alternância explícita **clientes distintos / volume de consultas** (§4.5)
 - **Delta vs. período anterior** em cada nó
 - Clique em qualquer nó → drill-down do coorte
-- Filtro de primeira classe: **credenciado × não credenciado** (`ec` nulo) e **modelo**
+- Filtros de primeira classe: **EC resolvido × não resolvido** e **modelo**
 
 ### 6.2. Matriz TCD0 × TCD1
-
-O Sankey por trilho perde a relação entre os dois; a matriz de coocorrência recupera:
 
 |              | TCD1 = 1 | TCD1 = 0 |
 |--------------|----------|----------|
@@ -308,7 +345,7 @@ O Sankey por trilho perde a relação entre os dois; a matriz de coocorrência r
 | **TCD0 = 0** | ⚠ **inconsistente** | nenhum |
 
 O quadrante `{tcd0:0, tcd1:1}` viola a monotonicidade esperada e é destacado como
-anomalia. Todos os quadrantes são clicáveis e alimentam o drill-down.
+anomalia. Todos os quadrantes são clicáveis.
 
 ### 6.3. Painel de Inconsistência (P5)
 
@@ -320,11 +357,10 @@ Duas propriedades reduzem o espaço de investigação antes de qualquer consulta
 **A inconsistência é sempre herdada, nunca emergente.** Como a combinação é AND por
 trilho, `elegibilidade.tcd1 = 1` exige que *ambas* as dimensões tenham `tcd1 = 1`; e
 `elegibilidade.tcd0 = 0` exige que *ao menos uma* tenha `tcd0 = 0`. Essa dimensão passa
-então a ter `tcd0 = 0` e `tcd1 = 1` — ou seja, já está inconsistente por si só. Não
-existe caso em que o estado inválido surja da composição de duas dimensões válidas.
+então a ter `tcd0 = 0` e `tcd1 = 1` — já está inconsistente por si só. Não existe caso em
+que o estado inválido surja da composição de duas dimensões válidas.
 
-A consequência é prática: **sempre há um modelo identificável na origem**. A origem se
-resolve em três valores, e não quatro:
+A consequência é prática: **sempre há um modelo identificável na origem**.
 
 | Origem | Condição | Leitura |
 |--------|----------|---------|
@@ -333,97 +369,125 @@ resolve em três valores, e não quatro:
 | `BOTH` | ambas violam | Problema sistêmico |
 
 **Toda inconsistência nasce no gate 4.** Nos gates terminais as duas dimensões recebem
-valores idênticos (`{1,1}` na Exceção, `{0,0}` em STAR e Penhora/Fumaça), nenhum dos
-quais viola a monotonicidade. Logo `exitGate = RISK` é condição necessária, e a
-investigação começa já restrita à avaliação de risco.
+valores idênticos (`{1,1}` na Exceção, `{0,0}` em STAR e Penhora/Fumaça), nenhum dos quais
+viola a monotonicidade. Logo `exitGate = RISK` é condição necessária.
 
-O painel entrega:
+O painel entrega volume e taxa de violações com evolução temporal, distribuição por
+origem, concentração por modelo e por status de EC, e lista drill-down por `merchantRef`,
+exportável para o time responsável.
 
-- Volume e taxa de violações, com evolução temporal (está crescendo?)
-- Distribuição por origem, conforme a tabela acima
-- Concentração por modelo, por segmento e por status de credenciamento
-- Lista drill-down por `merchantRef`, exportável para o time responsável
+### 6.4. Painel de Volatilidade (P6)
 
-Este painel é um resultado de qualidade de dados que se sustenta sozinho, independente do
-restante da entrega.
+Se um cliente pode ser consultado várias vezes no mesmo dia (§4.5), então ele pode
+**receber respostas diferentes no mesmo dia**. Isso é mensurável com o dado que já existe
+e ninguém está olhando.
 
-### 6.4. Painel do contrafactual (P2)
+Métricas, restritas a clientes com duas ou mais consultas no período:
 
-A população da Exceção nunca é avaliada, então o contrafactual não existe no dado. Dois
-caminhos, e o dashboard suporta ambos:
+- **Taxa de flip** — % que mudou de `elegibilidade` dentro do período
+- **Direção** — inelegível→elegível versus elegível→inelegível
+- **Transições de gate** — notadamente `RISK → EXCEPTION` e `EXCEPTION → RISK`
+- **Oscilação múltipla** — clientes que alternam mais de uma vez, sinal de instabilidade
+- **Concentração** — por modelo, por status de EC, por período do dia
 
-**a) Coorte comparável (funciona com o dado de hoje).** Para cada EC da Exceção, localizar
-ECs de perfil equivalente — mesmo status de credenciamento, mesmo modelo elegível, mesmo
-segmento — que passaram pela avaliação normal, e usar a taxa de reprovação observada como
-estimativa. É *matching* estatístico simples, não exige nenhuma mudança em produção, e o
-resultado é sempre rotulado como **estimativa**, com o `n` da coorte visível.
+Duas leituras de negócio saem daqui. A primeira é de experiência: um cliente que recebe
+"não" e depois "sim" na mesma tarde percebe o produto como inconsistente. A segunda é
+operacional: se a resposta depende de quando se pergunta, o número de aprovações depende
+do padrão de tráfego de quem integrou, não da base.
 
-**b) Shadow run (evolução de produto).** Rodar os modelos em modo sombra para a população
-da Exceção, sem efeito sobre a decisão. Custo baixo, e transforma a estimativa em medição.
-Entra como recomendação que acompanha a entrega.
+### 6.5. Painel do contrafactual (P2)
 
-No dataset sintético, o gerador produz a decisão sombra verdadeira e a mantém oculta do
-payload padrão — o que permite **medir o erro do método (a)** contra a verdade conhecida.
-Essa validação é, por si só, um argumento forte de rigor na apresentação.
+A população da Exceção nunca é avaliada, então o contrafactual não existe no dado. Três
+caminhos, em ordem decrescente de força — o dashboard usa o melhor disponível e rotula
+qual foi:
+
+**a) Observação direta.** Se um mesmo `merchantRef` aparece com `exitGate = EXCEPTION` em
+uma consulta e `exitGate = RISK` em outra, a decisão real dos modelos para aquele cliente
+**está no banco**. Não é estimativa: é medição. Depende de os clientes entrarem e saírem
+do Fluxo de Exceção ao longo do tempo (§11) — se ocorrer com frequência razoável, este
+caminho substitui os demais e é o resultado mais defensável da entrega.
+
+**b) Coorte comparável.** Parear cada cliente da Exceção com clientes de perfil
+equivalente — mesmo status de EC, mesmo modelo elegível, mesmo segmento — que passaram
+pela avaliação normal, usando a taxa de reprovação observada como estimativa. Não exige
+mudança em produção; resultado sempre rotulado como estimativa, com o `n` visível.
+
+**c) Shadow run.** Rodar os modelos em modo sombra para a população da Exceção, sem efeito
+sobre a decisão. Custo baixo, transforma estimativa em medição. Entra como recomendação de
+evolução de produto.
+
+No dataset sintético o gerador produz a decisão sombra verdadeira e a mantém oculta do
+payload padrão, o que permite **medir o erro do método (b)** contra a verdade conhecida.
 
 ```
-População via Exceção:              12.400 ECs
-Seria reprovada pelos modelos:       3.720 ECs  (30%)   [estimativa · n=48.200]
+População via Exceção:              12.400 clientes
+Seria reprovada pelos modelos:       3.720 clientes  (30%)   [observado · n=2.140]
    ├─ por Fraude:                    1.100
    ├─ por Crédito:                   2.100
    └─ por ambos:                       520
 Inadimplência observada no grupo:     8,4%   vs.  2,1% na base aprovada normalmente
 ```
 
-### 6.5. Painel What-If (P4)
+### 6.6. Painel What-If (P4)
 
 Controles para ligar/desligar e parametrizar regras, com recorte por segmento (ex.:
-*desligar a Exceção apenas para não credenciados*). Ao aplicar, o Sankey mostra **estado
-atual vs. simulado lado a lado**, com delta de elegibilidade e delta de risco assumido.
+*desligar a Exceção apenas para clientes sem EC resolvido*). Ao aplicar, o Sankey mostra
+**estado atual vs. simulado lado a lado**, com delta de elegibilidade e delta de risco
+assumido.
 
 ---
 
 ## 7. Dados: o gerador é o roteiro da demo
 
-Com massa sintética, o gerador deixa de ser utilitário e passa a ser peça central. Um
-dataset uniforme produz uma apresentação sem clímax. Ele precisa produzir:
+Com massa sintética, o gerador deixa de ser utilitário e passa a ser peça central. Ele
+precisa produzir:
 
-**a) Distribuições realistas**, com correlação entre maturidade do cliente, presença de
-`ec`, modelo aplicado e probabilidade de aprovação.
+**a) Múltiplas consultas por cliente**, com distribuição realista (cauda longa: poucos
+clientes com centenas de consultas, muitos com uma só). Sem isso, §4.5 e §6.4 não têm o
+que medir, e o funil pareceria correto por acidente.
 
-**b) Decisão sombra para a população da Exceção**, oculta do payload padrão — serve de
-gabarito para validar o método de coorte comparável (§6.4).
+**b) Flips de decisão** entre consultas do mesmo cliente, incluindo entradas e saídas do
+Fluxo de Exceção — que alimentam tanto P6 quanto o contrafactual por observação direta.
 
-**c) Outcome correlacionado com o perfil** — inadimplência e fraude realizada. Sem
+**c) Distribuições realistas**, respeitando a invariante `ec` nulo → `M1` e a correlação
+entre maturidade, presença de EC, modelo aplicado e probabilidade de aprovação.
+
+**d) As duas subpopulações de `ec` nulo** (novo e vigente inativo) com perfis de risco
+distintos, para demonstrar o custo do ponto cego de segmentação da §4.3.
+
+**e) Decisão sombra para a população da Exceção**, oculta do payload padrão — gabarito
+para validar o método de coorte comparável.
+
+**f) Outcome correlacionado com o perfil** — inadimplência e fraude realizada. Sem
 outcome, **P3** não tem resposta nem fictícia.
 
-**d) Inconsistências plantadas** nas quatro origens da §6.3, em proporções distintas, para
-que o painel tenha o que diagnosticar.
+**g) Inconsistências plantadas** nas três origens da §6.3, em proporções distintas.
 
-**e) Cenários plantados** — insights escondidos na massa, para descoberta ao vivo:
+**h) Cenários plantados** — insights escondidos na massa, para descoberta ao vivo:
 
 | Cenário plantado | O que o PO descobre na demo |
 |------------------|-----------------------------|
 | Subgrupo da Exceção que os modelos reprovariam e que inadimple 3× mais | A Exceção tem custo concentrado e identificável |
-| Exceção concentrada em não credenciados (`ec` nulo) | O atalho tem um perfil dominante que ninguém mapeou |
-| Inconsistência TCD0/TCD1 crescendo e originada num modelo específico | O painel de inconsistência aponta o responsável |
-| Drift na taxa de aprovação de um modelo de crédito | Detecção de anomalia funciona sem ninguém pedir |
+| Cliente que oscila entre elegível e inelegível no mesmo dia | O produto responde de forma instável |
+| Funil muito diferente por consulta vs. por cliente distinto | A métrica errada conta uma história errada |
+| Inconsistência TCD0/TCD1 crescendo, originada num modelo específico | O painel aponta o responsável |
+| Vigentes inativos escondidos entre os "clientes novos" | O ponto cego de segmentação tem custo real |
 | Divergências entre decisão gravada e motor recalculado | O `ValidateEngine` acha regra não documentada |
 
-**f) Seed determinístico** — a mesma massa em qualquer máquina, sempre.
+**i) Seed determinístico** — a mesma massa em qualquer máquina, sempre.
 
 ### 7.1. Auditoria do motor
 
 Com dados sintéticos não é possível provar fidelidade contra produção — comparar o motor
 com uma decisão que o próprio gerador produziu é circular. O que se entrega é o
-**mecanismo**, validado pelas divergências plantadas em (e):
+**mecanismo**, validado pelas divergências plantadas em (h):
 
 - `ValidateEngine` compara decisão gravada × decisão recalculada
-- Indicador exibido na UI: `Fidelidade do simulador: 99,2% (1,2M registros)`
+- Indicador na UI: `Fidelidade do simulador: 99,2% (1,2M registros)`
 - Relatório das divergências agrupadas por padrão
 
-Argumento na apresentação: *"o simulador não pede fé — ele se audita. Plugue a base real
-e ele informa a própria fidelidade."*
+Argumento na apresentação: *"o simulador não pede fé — ele se audita. Plugue a base real e
+ele informa a própria fidelidade."*
 
 ---
 
@@ -435,7 +499,7 @@ e ele informa a própria fidelidade."*
 |---|-----|---------------|
 | 1 | **Agente com tools** | Pergunta em linguagem natural → tool call tipada → use case determinístico |
 | 2 | **Narrativa automática** | Deltas calculados em código; LLM apenas redige. Renderizada no topo, sem o PO precisar perguntar |
-| 3 | **Explicação de decisão** | Gate de saída e modelo traduzidos para linguagem de negócio |
+| 3 | **Explicação de decisão** | Gate de saída, modelo e histórico de consultas traduzidos para linguagem de negócio |
 | 4 | **Triagem de anomalia** | Detecção estatística em código; LLM prioriza e contextualiza |
 | 5 | **Generative UI** | O agente responde com **gráfico**, não parágrafo — tool result renderizado como componente React |
 
@@ -444,21 +508,24 @@ e ele informa a própria fidelidade."*
 Espelham 1:1 os use cases, com schema Zod compartilhado:
 
 ```
-getFunnel(track, period, segment?)           → composição do funil no trilho
+getFunnel(track, period, unit, segment?)     → funil no trilho; unit = clientes | consultas
 getInconsistencyReport(period, groupBy?)     → violações TCD0/TCD1 e origem
+getVolatilityReport(period, groupBy?)        → flips, direção e transições de gate
 getExceptionCounterfactual(period, segment?) → o que os modelos teriam decidido
 simulateScenario(rules[], track, segment?)   → impacto de mudança de regra
-explainDecision(merchantRef)                 → gate, modelo e motivo traduzidos
+explainDecision(merchantRef)                 → gate, modelo, histórico e motivo
 compareCohorts(cohortA, cohortB)             → perfil e outcome comparados
 detectAnomalies(period)                      → desvios estatísticos
 ```
 
 Nenhuma tool aceita ou retorna `id`. `merchantRef` é a única referência a cliente.
+Toda tool que conta clientes exige `unit` explícito — não há default implícito capaz de
+produzir a leitura errada da §4.5.
 
 ### 8.3. Evitando o chatbot órfão
 
-- **Perguntas sugeridas contextuais**, que mudam conforme o filtro ativo no dashboard
-- **Resumo executivo automático** (uso 2) já renderizado ao abrir a tela
+- **Perguntas sugeridas contextuais**, que mudam conforme o filtro ativo
+- **Resumo executivo automático** já renderizado ao abrir a tela
 - Resposta em **streaming**, com o gráfico aparecendo antes de o texto terminar
 
 ### 8.4. O que separa isto de um brinquedo
@@ -476,23 +543,23 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 ### Fase 0 — Fundação
 - Monorepo (pnpm workspaces), lint, format, CI
-- ACL de tradução do payload (§4.2 → §4.4) com testes contra os exemplos reais
-- Gerador sintético com seed, decisão sombra, outcome, inconsistências e cenários plantados
+- ACL de tradução do payload (§4.2 → §4.6) com testes contra os exemplos reais
+- Gerador sintético com seed, múltiplas consultas, flips, sombra, outcome e cenários plantados
 - `packages/contracts` com os primeiros schemas Zod
 
 **Pronto quando:** `pnpm dev` sobe tudo e o banco tem massa reproduzível.
 
-### Fase 1 — Funil e inconsistência
-- Repositories JSONB, índices GIN, views materializadas
-- `GetFunnel` por trilho, período e segmento
+### Fase 1 — Funil, inconsistência e volatilidade
+- Repositories JSONB, índices GIN e de deduplicação, views materializadas
+- `GetFunnel` por trilho, período, unidade e segmento
 - Sankey por trilho + matriz TCD0×TCD1, com deltas e drill-down
-- `GetInconsistencyReport` e painel de inconsistência
+- `GetInconsistencyReport` e `GetVolatilityReport` com seus painéis
 
-**Pronto quando:** o PO responde **P1** e **P5** sozinho.
+**Pronto quando:** o PO responde **P1**, **P5** e **P6** sozinho.
 
 ### Fase 2 — Contrafactual, motor e simulação
 - Motor de regras puro no domínio, com cobertura de teste
-- `GetExceptionCounterfactual` por coorte comparável, validado contra a sombra sintética
+- `GetExceptionCounterfactual`, priorizando observação direta sobre coorte comparável
 - `SimulateScenario` em SQL parametrizado
 - `ValidateEngine` e indicador de fidelidade
 - Painel What-If com comparação lado a lado
@@ -500,7 +567,7 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 **Pronto quando:** o PO responde **P2**, **P3** e **P4**. *Aqui a entrega deixa de ser dashboard e vira ferramenta de decisão.*
 
 ### Fase 3 — Camada de IA
-- `LlmProvider` plugável, agente com as 7 tools
+- `LlmProvider` plugável, agente com as 8 tools
 - Narrativa automática e explicação de decisão
 - Chat com streaming e generative UI
 
@@ -519,15 +586,16 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 | Risco | Impacto | Mitigação |
 |-------|---------|-----------|
-| Não existe outcome (inadimplência/fraude) disponível | **Crítico** — P3 fica sem resposta | Confirmar cedo (§11). Sem outcome, P2 perde o desfecho e a entrega se apoia em P1/P4/P5 |
-| `ec` nulo tratado como dado faltante em vez de estado de negócio | Alto — segmentação errada em toda a análise | Confirmar semântica (§11) antes da Fase 1 |
+| Unidade de análise por consulta em vez de cliente | **Crítico** — o funil descreveria tráfego de integração, não a base | §4.5: métrica dupla, default por cliente distinto, `unit` obrigatório nas tools |
+| Campo de data sem hora | **Crítico** — sem ordenação intradiária não há deduplicação por última consulta nem volatilidade | Confirmar cedo (§11); se for só data, P6 muda de escopo e a dedup passa a ser por dia |
+| Não existe outcome disponível | **Crítico** — P3 fica sem resposta | Confirmar cedo (§11). Sem outcome a entrega se apoia em P1/P2/P4/P5/P6 |
+| `ec` nulo lido como "cliente novo" | Alto — conclusão inválida sobre o perfil da Exceção | §4.3: rótulo honesto, e o dashboard nunca afirma "novo" sem fonte que separe |
 | Mistura de `M1` de fraude com `M1` de crédito | Alto — agregações sem sentido | Branded types separados, erro em tempo de compilação |
 | Motor do simulador diverge do sistema real | Alto — decisão sobre número errado | `ValidateEngine` + indicador de fidelidade na UI |
 | Agente alucina números | Alto — perda total de credibilidade | Princípio §3.1 + evals em CI + guardrails |
 | PII (CPF/CNPJ) trafegando para o LLM | Alto — risco regulatório | `merchantRef` desde o commit 1 (§3.2) |
-| Contrafactual por matching lido como medição | Médio — decisão sobre estimativa | Rótulo explícito de estimativa + `n` visível + erro medido contra a sombra sintética |
+| Contrafactual por matching lido como medição | Médio — decisão sobre estimativa | Rótulo do método usado + `n` visível + erro medido contra a sombra sintética |
 | Comparação de taxa entre modelos lida como performance | Médio — conclusão inválida por viés de seleção | Aviso na UI onde a comparação aparece |
-| Dataset sintético não convence | Médio — demo sem impacto | Cenários plantados, outcome correlacionado, distribuições realistas |
 | Agregação lenta na base cheia | Médio — demo trava | Agregação no Postgres, GIN, matviews, medição desde a Fase 1 |
 
 ---
@@ -536,21 +604,23 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 Hipóteses adotadas para não bloquear a Fase 0.
 
-1. **`ec: null` significa cliente ainda não credenciado?** Ou é dado faltante? Muda de
-   ruído a ser limpo para dimensão analítica de primeira classe. *Hipótese adotada: estado
-   de negócio — prospect ainda não credenciado.*
-2. **O `id` é estável e único por cliente ao longo do tempo?** É a base do `merchantRef` e
-   de toda a análise longitudinal. *Hipótese adotada: sim.*
-3. **Existe outcome disponível** (inadimplência, fraude confirmada, churn) e em que
+1. **O campo de data tem hora?** Se for `date` puro, não há como ordenar consultas do
+   mesmo dia — a deduplicação por última consulta e boa parte de P6 perdem base. *Hipótese
+   adotada: timestamp completo.*
+2. **Clientes entram e saem do Fluxo de Exceção ao longo do tempo?** Se sim, o
+   contrafactual vira medição direta (§6.5a) em vez de estimativa — é a diferença entre um
+   número defensável e um número aproximado. *Hipótese adotada: sim, com frequência
+   moderada.*
+3. **Existe fonte que separe cliente novo de vigente inativo** quando `ec` é nulo? Sem
+   ela, as duas populações permanecem agrupadas e o dashboard não pode afirmar qual
+   predomina. *Hipótese adotada: não disponível; rótulo conjunto.*
+4. **Existe outcome disponível** (inadimplência, fraude confirmada, churn) e em que
    janela? Sem ele, **P3** não tem resposta. *Hipótese adotada: inadimplência 90d e fraude
    confirmada, sintéticos.*
-4. **Nome e granularidade do campo de data** — `date` ou `timestamp`? Uma consulta por
-   cliente por dia, ou várias? *Hipótese adotada: timestamp, múltiplas consultas por
-   cliente ao longo do tempo.*
 5. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
    `ExplainDecision`, mas não bloqueiam. *Hipótese adotada: não disponíveis.*
-6. **Atributos de segmentação** além de modelo e status de credenciamento (MCC, porte,
-   UF, tempo de casa). *Hipótese adotada: sintéticos, plugáveis quando existirem.*
+6. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
+   casa). *Hipótese adotada: sintéticos, plugáveis quando existirem.*
 7. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
-   agora. Registrado para quando chegar; até lá o dashboard trata modelo como proxy de
-   maturidade e sinaliza o viés de seleção.
+   agora. Até lá o dashboard trata modelo como proxy de maturidade e sinaliza o viés de
+   seleção.
