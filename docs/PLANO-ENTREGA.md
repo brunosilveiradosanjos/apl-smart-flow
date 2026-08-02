@@ -36,10 +36,10 @@ A entrega é bem-sucedida se o PO conseguir responder, sozinho e em minutos:
 Responder **P1** é um relatório. **P2**, **P5** e **P6** entregam números que hoje não
 existem em lugar nenhum. É esse o alvo.
 
-> O tratamento aprofundado de granularidade, volatilidade e janela de exceção está em
-> [`ANALISE-TEMPORAL.md`](./ANALISE-TEMPORAL.md); o contexto de negócio do produto em
-> [`PRODUTO-TC.md`](./PRODUTO-TC.md); o padrão visual em
-> [`design/TOKENS.md`](./design/TOKENS.md).
+> Documentos irmãos: [`ARQUITETURA.md`](./ARQUITETURA.md) traz estrutura de pastas,
+> regras de dependência e a lista de pacotes por fase; [`ANALISE-TEMPORAL.md`](./ANALISE-TEMPORAL.md)
+> aprofunda granularidade, volatilidade e janela de exceção; [`PRODUTO-TC.md`](./PRODUTO-TC.md)
+> guarda o contexto de negócio; [`design/TOKENS.md`](./design/TOKENS.md) o padrão visual.
 
 ---
 
