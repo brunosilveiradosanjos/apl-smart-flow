@@ -104,6 +104,10 @@ apps/api/
 │   │   │   └── llm-provider.port.ts
 │   │   ├── funnel/get-funnel.usecase.ts
 │   │   ├── overview/get-model-overview.usecase.ts
+│   │   ├── dispersion/get-eligibility-dispersion.usecase.ts
+│   │   ├── merchant/
+│   │   │   ├── resolve-merchant.usecase.ts      CPF/CNPJ/EC → merchantRef
+│   │   │   └── get-eligibility-history.usecase.ts
 │   │   ├── inconsistency/get-inconsistency-report.usecase.ts
 │   │   ├── volatility/get-volatility-report.usecase.ts
 │   │   ├── exception/
@@ -119,6 +123,7 @@ apps/api/
 │   │   │   │   ├── decision.mapper.ts
 │   │   │   │   ├── gate.mapper.ts        modelo* polimórfico → exitGate
 │   │   │   │   ├── merchant-ref.ts       hash do CPF/CNPJ
+│   │   │   │   ├── merchant-index.ts     ec → merchantRef (construído na ingestão)
 │   │   │   │   └── integrity.ts          validações de ingestão
 │   │   │   ├── queries/            ← SQL analítico, um arquivo por use case
 │   │   │   └── repositories/       implementam as ports
@@ -130,6 +135,9 @@ apps/api/
 │   ├── agent/                      ← só wrappers. Sem banco, sem SQL, sem PII.
 │   │   ├── agent.service.ts
 │   │   ├── tools/                  um arquivo por tool
+│   │   ├── pii/
+│   │   │   ├── tokenizer.ts        identificador → [cliente#ref] antes do modelo
+│   │   │   └── detector.ts         formatos: alfanumérico, EC, máscaras
 │   │   └── prompts/                system prompt (usa PRODUTO-TC.md)
 │   │
 │   └── http/
@@ -204,6 +212,7 @@ apps/web/src/
 │   ├── inconsistency/          nível 2 — P5
 │   ├── volatility/             nível 2 — P6
 │   ├── exception/              nível 3 — P1, P2, P3
+│   ├── merchant/               busca e linha do tempo de um cliente
 │   ├── simulation/             What-If — P4
 │   └── agent/                  chat, generative UI
 │

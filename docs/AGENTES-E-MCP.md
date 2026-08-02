@@ -73,13 +73,19 @@ DTO no Nest e tipam o React.
 ```
 getModelOverview(period, segment?)            panorama dimensão × modelo
 getFunnel(track, period, unit, segment?)      composição do funil
+getEligibilityDispersion(period, groupBy?)    como a elegibilidade se distribui
+getEligibilityHistory(merchantRef, period)    linha do tempo de UM cliente
 getInconsistencyReport(period, groupBy?)      anomalia {tcd0:1, tcd1:0} e origem
 getVolatilityReport(period, groupBy?)         flips, decompostos por causa
 getExceptionCounterfactual(period, segment?)  pré-pós das janelas encerradas
 getExceptionAudit(period)                     vigência declarada × comportamento
-explainDecision(merchantRef)                  gate, modelo, histórico
+explainDecision(merchantRef, consultedAt?)    por que ESTA decisão saiu assim
 compareCohorts(cohortA, cohortB)              perfil e outcome comparados
 ```
+
+`getEligibilityHistory` e `explainDecision` são vizinhas mas distintas: a primeira devolve
+a **sequência** de consultas de um cliente; a segunda destrincha **uma** decisão. Ambas
+detalhadas em §3.5 e §3.6.
 
 Quatro regras de desenho que importam mais que a lista:
 
@@ -92,7 +98,8 @@ da armadilha de granularidade (`ANALISE-TEMPORAL.md` §3): contar por consulta e
 por cliente distinto descreveria tráfego de integração, não a base.
 
 **c) Nenhuma tool recebe ou devolve `id`.** `merchantRef` é a única referência a cliente
-que sobe da infraestrutura. O CPF/CNPJ não existe acima da ACL.
+que sobe da infraestrutura — inclusive na consulta por cliente específico, que é atendida
+sem que o CPF/CNPJ chegue ao modelo (§3.5).
 
 **d) Toda tool devolve dado + como renderizar.** O retorno carrega a série já agregada e um
 descritor de visualização, para o front escolher o componente:
@@ -107,6 +114,111 @@ descritor de visualização, para o front escolher o componente:
 
 O campo `basis` viaja junto de propósito: é o que permite a resposta dizer *"57% das
 janelas encerradas"* em vez de apresentar um recorte como se fosse o total.
+
+### 3.5. Consulta por cliente sem entregar PII ao modelo
+
+**Requisito do PO:** *"qual o histórico de elegibilidade do cliente X no período Y"*, onde
+X pode ser CPF, CNPJ ou EC. É requisito de funcionamento, não conveniência.
+
+Isso colide de frente com o princípio de que o LLM nunca vê identificador de pessoa
+(`PLANO-ENTREGA.md` §3.2). O requisito ganha — mas o princípio não precisa cair. Ele muda
+de formulação:
+
+> O identificador entra pela **porta da frente**, não pelo modelo.
+
+Dois caminhos, complementares.
+
+**a) Caminho primário — resolução na interface.** Um campo de busca dedicado, fora do
+chat. O PO digita CPF, CNPJ ou EC; a API resolve para `merchantRef`; a conversa recebe um
+chip de contexto *"cliente fixado"*. Toda pergunta seguinte já chega ao modelo com o
+`merchantRef` no contexto, e o identificador nunca esteve numa mensagem.
+
+Confiável, e é o caminho que a UI deve incentivar.
+
+**b) Rede de segurança — proxy de tokenização.** Se o PO digitar o identificador direto no
+chat — e vai digitar — um passo de pré-processamento na API, **antes** de qualquer chamada
+ao provedor:
+
+```
+"histórico do cliente 9189ARC9891 em julho"
+            │
+            ▼  detecção + resolução (determinística, sem LLM)
+"histórico do cliente [cliente#a3f9c2] em julho"   ← é isto que o modelo recebe
+            │
+            ▼  o agente chama getEligibilityHistory({ merchantRef: "a3f9c2…" })
+            │
+            ▼  na volta, o navegador re-hidrata o token para exibição
+"histórico do cliente 9189ARC9891 em julho: …"     ← é isto que o PO lê
+```
+
+Detalhes que importam:
+
+- **A detecção não é trivial.** O `id` é *CPF/CNPJ alfanumérico* (`9189ARC9891`), não uma
+  máscara padrão — regex de CPF não pega. A detecção precisa cobrir o formato real, o EC
+  de 10 dígitos numéricos e as máscaras convencionais, por garantia.
+- **Não resolveu, não passa.** Se o candidato não resolve para nenhum cliente, vira
+  placeholder e o agente responde pedindo o campo de busca. Nunca segue com o identificador
+  no texto.
+- **Log e trace guardam o token, nunca o identificador.** Vale para observabilidade e para
+  o histórico da conversa.
+- **A re-hidratação é só no navegador daquele usuário**, no momento da exibição.
+
+`resolveMerchant(identifier)` **não é tool do agente.** É endpoint da API, consumido pela
+UI e pelo proxy. Se fosse tool, o argumento seria o CPF — e o CPF teria passado pelo
+modelo para chegar até ela, que é exatamente o que se está evitando.
+
+**Índice de resolução.** `id → merchantRef` é só o hash. `ec → merchantRef` precisa de
+índice, porque o `ec` é nulo em parte das consultas do mesmo cliente
+(`PLANO-ENTREGA.md` §4.3) — o mapa se constrói dos pares observados na ingestão. Ponto a
+confirmar com o time: **um cliente pode trocar de EC ao longo do tempo?** Se puder, o
+índice é `ec → merchantRef` com histórico, não um par fixo.
+
+### 3.6. `getEligibilityHistory` — a linha do tempo de um cliente
+
+É a versão individual de tudo que os painéis mostram no agregado. Devolve, para o período:
+
+| Bloco | Conteúdo |
+|-------|----------|
+| **Consultas** | cada uma com `consultedAt`, `exitGate`, modelos aplicados e o par `{tcd0, tcd1}` |
+| **Janelas de exceção** | vigências que cruzam o período, da tabela de vigência |
+| **Flips** | mudanças de decisão, já classificadas por causa (`ANALISE-TEMPORAL.md` §4) |
+| **Estados anômalos** | consultas em `{tcd0:1, tcd1:0}`, se houver |
+| **Contrafactual** | se houve janela encerrada, a decisão dos modelos antes e depois |
+
+Renderiza como faixa temporal: cada consulta é uma marca, a janela de exceção é um bloco
+sombreado, o flip é uma transição destacada. O PO vê num relance se aquele cliente entrou
+por exceção, se oscilou, e o que aconteceu quando a vigência acabou.
+
+É também a tela onde o **`getExceptionCounterfactual` deixa de ser estatística e vira
+caso concreto** — útil quando alguém questiona o número agregado.
+
+### 3.7. `getEligibilityDispersion` — o que "dispersão" significa
+
+O termo é ambíguo, e leituras diferentes produzem painéis diferentes. A leitura que adoto
+como padrão é **composição**: como a base se distribui entre os estados possíveis de
+elegibilidade no período.
+
+```
+{tcd0:0, tcd1:1}   só dia seguinte      ← caso comum
+{tcd0:1, tcd1:1}   ambos os trilhos
+{tcd0:0, tcd1:0}   inelegível
+{tcd0:1, tcd1:0}   ⚠ anômalo
+```
+
+É a matriz TCD0 × TCD1 (`PLANO-ENTREGA.md` §6.4) com recorte por `groupBy` — gate de saída,
+modelo, status de EC, segmento.
+
+A tool devolve, além da composição, duas medidas que respondem leituras vizinhas de
+"dispersão" e evitam ida e volta:
+
+- **Concentração** — quanto da elegibilidade está concentrada em poucos segmentos
+  (participação do decil superior). Responde *"está espalhada ou concentrada?"*
+- **Estabilidade temporal** — desvio da taxa diária no período, calculado **fora da
+  população em janela de exceção**, porque a proporção em vigência varia sozinha e move a
+  taxa global sem que nada tenha mudado (`ANALISE-TEMPORAL.md` §5)
+
+Se a sua leitura de "dispersão" for outra — variância entre modelos, ou espalhamento
+geográfico, por exemplo — é troca barata agora e cara depois de a tool existir.
 
 ---
 
@@ -183,6 +295,11 @@ A maioria das implementações expõe só tools. As outras duas resolvem problem
 
 Sem isso, o agente traduz "TCD1" como jargão ou, pior, inventa o significado.
 
+> **A resolução de identificador não é exposta por MCP por padrão.** Um cliente MCP
+> rodando fora do painel receberia o CPF/CNPJ digitado pelo analista — o mesmo problema
+> que §3.5 evita. Se o time decidir habilitar para uso interno, é decisão de autorização
+> explícita, com o flag desligado de fábrica.
+
 **Prompts** — as perguntas douradas viram prompts reutilizáveis:
 
 ```
@@ -190,6 +307,8 @@ Sem isso, o agente traduz "TCD1" como jargão ou, pior, inventa o significado.
 /investigar-drift       um modelo caiu — decompõe e compara períodos
 /auditar-excecao        pré-pós + vigência declarada × aplicada
 /anomalia-trilhos       volume e origem de {tcd0:1, tcd1:0}
+/dispersao-periodo      composição, concentração e estabilidade
+/historico-cliente      linha do tempo de um cliente já resolvido
 ```
 
 O mesmo conjunto alimenta os evals (§7) e os botões de sugestão do chat. Escrito uma vez.
@@ -316,3 +435,7 @@ O skill `mcp-builder`, já instalado em `.claude/skills/`, cobre a construção 
 3. **Quem mais consumiria o MCP na Cielo?** Se houver um segundo time interessado, o
    servidor sobe de "demonstração de arquitetura" para entrega com usuário real — e isso
    muda a prioridade dele nas fases.
+4. **Um cliente pode trocar de EC ao longo do tempo?** Define se o índice de resolução é
+   um par fixo ou um mapa com histórico (§3.5).
+5. **O que "dispersão" significa para o PO** (§3.7). Adotei composição como leitura padrão;
+   confirmar antes de a tool existir.

@@ -117,6 +117,13 @@ Solução: a camada de infraestrutura deriva um **`merchantRef`** — hash deter
 - Opaco e não reversível: seguro para frontend, LLM e URL de drill-down
 - O `id` não sai da camada de infraestrutura
 
+**Consultar um cliente específico continua sendo possível.** O PO precisa perguntar pelo
+histórico de um CPF, CNPJ ou EC — é requisito de funcionamento. O princípio não cai, muda
+de formulação: *o identificador entra pela porta da frente, não pelo modelo*. A resolução
+para `merchantRef` acontece em endpoint próprio da API, acionado pela busca da interface ou
+por um proxy de tokenização que substitui o identificador antes de qualquer chamada ao
+provedor. Mecânica em [`AGENTES-E-MCP.md`](./AGENTES-E-MCP.md) §3.5.
+
 ### 3.3. Uma regra de negócio, dois consumidores
 
 O botão do What-If na UI e a tool do agente chamam **o mesmo use case**. Nunca há duas
