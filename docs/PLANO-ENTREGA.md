@@ -49,6 +49,7 @@ existem em lugar nenhum. É esse o alvo.
 | **LLM** | Indefinido | Provider abstraído atrás de interface. Com o AI SDK a troca Bedrock ↔ Anthropic ↔ Azure é uma linha. Decisão adiada sem custo. |
 | **Prazo** | Sem prazo rígido | Construção incremental por fases; cada fase é demonstrável isoladamente e recebe uma tag git. |
 | **Repositório** | Monorepo | `apps/api` + `apps/web` + `packages/contracts`. Tipagem end-to-end, um comando sobe tudo. |
+| **Design** | Tokens próprios, React + Tailwind | Lovable descartado. Tokens em `docs/design/` — ver [`TOKENS.md`](./design/TOKENS.md). |
 
 ### 2.1. Stack
 
