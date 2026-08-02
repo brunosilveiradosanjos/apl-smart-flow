@@ -37,7 +37,9 @@ Responder **P1** é um relatório. **P2**, **P5** e **P6** entregam números que
 existem em lugar nenhum. É esse o alvo.
 
 > O tratamento aprofundado de granularidade, volatilidade e janela de exceção está em
-> [`ANALISE-TEMPORAL.md`](./ANALISE-TEMPORAL.md).
+> [`ANALISE-TEMPORAL.md`](./ANALISE-TEMPORAL.md); o contexto de negócio do produto em
+> [`PRODUTO-TC.md`](./PRODUTO-TC.md); o padrão visual em
+> [`design/TOKENS.md`](./design/TOKENS.md).
 
 ---
 
@@ -162,6 +164,11 @@ Regras confirmadas:
 - **Combinação é AND por trilho.** Verificado contra todos os exemplos fornecidos.
 - **Monotonicidade esperada:** `tcd1 = 1` deveria implicar `tcd0 = 1`. O estado
   `{tcd0:0, tcd1:1}` é inconsistente e ocorre em produção (§6.5).
+- **Semântica dos trilhos:** `TCD0` é a modalidade *"Hoje"* (mesmo dia) e `TCD1` a
+  modalidade *"Amanhã"* (dia seguinte) — modalidades comerciais distintas do mesmo
+  produto, não estágios. Pela monotonicidade, **TCD1 é o trilho mais restritivo**, o que
+  é contraintuitivo e precisa ficar explícito na interface. Ver
+  [`PRODUTO-TC.md`](./PRODUTO-TC.md).
 - **Invariante do modelo:** sem `ec` resolvido e chegando ao gate 4, o cliente é sempre
   avaliado por `M1` nas duas dimensões. A recíproca **não** vale — `M1` também ocorre com
   `ec` presente. Vira regra de validação na ingestão e caso de teste.

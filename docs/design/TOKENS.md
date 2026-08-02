@@ -1,105 +1,158 @@
-# Padrão de tipografia e cores
+# Padrão de tipografia e cores — base Cielo
 
-> **Estes valores são um ponto de partida, não os tokens oficiais da Cielo.**
-> O ambiente desta sessão bloqueia `cielo.com.br` por política de rede, então não foi
-> possível extrair a paleta real do site. O que está aqui é uma paleta na família
-> cromática da marca (azul + verde), construída e validada por script, montada para ser
-> **trocada em um único lugar** quando os valores oficiais chegarem — ver §5.
+> **Valores lidos visualmente de capturas do site**, não extraídos do CSS nem do brand
+> book. O ambiente bloqueia `cielo.com.br` por política de rede (403 no CONNECT), então
+> não foi possível amostrar os hex na fonte. São aproximações fiéis o suficiente para
+> desenhar, e devem ser conferidas contra os valores oficiais antes de qualquer coisa ir
+> para produção. A troca está isolada em `tailwind.tokens.js`.
 
 Alvo de implementação: **React + Tailwind**.
 
 ---
 
-## 1. Cores de marca
+## 1. Paleta
 
-| Papel | Light | Dark | Uso |
-|-------|-------|------|-----|
-| `brand` | `#0057b8` | `#2e86e0` | Ação primária, volume no funil, dimensão Fraude |
-| `brand-alt` | `#00a758` | `#14a05f` | Dimensão Crédito, confirmação |
-| `brand-ink` | `#003a7a` | `#4c9ee8` | Hover e estados pressionados |
+### Marca
 
-Validado com `scripts/validate_palette.js` do skill `dataviz`, contra as superfícies reais
-de cada modo:
+| Papel | Hex aprox. | Onde aparece no site |
+|-------|-----------|----------------------|
+| `blue` | `#0b5fd5` | Botão "Seja Cielo", links, fundo do hero |
+| `cyan` | `#00aeef` | Anel da seção "Dinheiro rápido na conta", ícones de linha |
+| `navy` | `#12263f` | Todos os títulos de seção |
+| `lime` | `#c8d400` | Faixa "Time Cielo", ícones da barra promocional |
+
+O azul e o ciano são as duas cores centrais. Vale registrar o resultado do teste, porque
+duas cores frias costumam falhar:
 
 ```
-light  #0057b8 ↔ #00a758   CVD ΔE 29.3 · normal 31.1 · contraste ≥3:1   PASS
-dark   #2e86e0 ↔ #14a05f   CVD ΔE 21.5 · normal 22.9 · contraste ≥3:1   PASS
+#0b5fd5 ↔ #00aeef    CVD ΔE 19.7 (deutan) · normal 21.2    PASS
 ```
 
-## 2. Neutros
+Passam com folga como par categórico — servem para Fraude × Crédito sem precisar de
+muleta.
 
-Puxados levemente para o azul da marca — cinza puro lê como não escolhido.
+### Neutros
 
-| Papel | Light | Dark |
-|-------|-------|------|
-| `bg` (plano da página) | `#f4f6f9` | `#0a1119` |
-| `surface` (cartão) | `#ffffff` | `#101b26` |
-| `sunken` (faixa interna) | `#e8ecf2` | `#0d1620` |
-| `ink` (texto primário) | `#0b1a2b` | `#eef3f8` |
-| `ink-2` (secundário) | `#44566b` | `#a2b3c4` |
-| `muted` (rótulo, eixo) | `#7a8b9c` | `#6d8095` |
-| `line` (régua) | `#d7dee7` | `#1c2b3a` |
+| Papel | Light | Dark (derivado) |
+|-------|-------|-----------------|
+| `bg` | `#f0f2f4` | `#0a1420` |
+| `surface` | `#ffffff` | `#122236` |
+| `sunken` | `#e6eaee` | `#0e1b2b` |
+| `ink` | `#12263f` | `#eef3f8` |
+| `ink-2` | `#4a5a6a` | `#9fb1c4` |
+| `muted` | `#7b8896` | `#6b7f94` |
+| `line` | `#dbe1e7` | `#1e3048` |
 
-## 3. Cores semânticas
+O site é só claro. O modo escuro é derivação minha, mantendo o mesmo matiz.
 
-Reservadas. Nunca reaproveitadas como cor de série, e nunca sozinhas — sempre com
-rótulo ou marca ao lado.
+### Semânticas
 
-| Papel | Hex | Significado no produto |
-|-------|-----|------------------------|
-| `good` | `#0ca30c` | Elegível, rampa funcionou |
-| `warning` | `#fab219` | Exceção desnecessária, desperdício |
-| `serious` | `#ec835a` | Deterioração durante a janela |
+| Papel | Hex | Uso |
+|-------|-----|-----|
+| `good` | `#0ca30c` | Elegível |
+| `warning` | `#c8d400` (lime) | Exceção — a lime da marca faz esse papel |
+| `serious` | `#ec835a` | Deterioração |
 | `critical` | `#d03b3b` | Furo, inconsistência, flip sem explicação |
 
-**Regra que evita o problema de daltonismo:** preenchimentos grandes usam **uma cor só**
-(a marca). As cores semânticas aparecem apenas em **marcas pequenas com rótulo** — chip,
-ponto, régua de topo. Verde e cinza em blocos grandes lado a lado falham para
-deuteranopia (ΔE 5.5 medido); em marca pequena com rótulo, o texto carrega o significado.
+## 2. Regras de contraste que o teste impôs
 
-## 4. Tipografia
+Duas cores da marca ficam abaixo de 3:1 sobre branco:
 
-A face institucional da Cielo não pôde ser confirmada (§ nota do topo), e o CSP de
-artifacts bloqueia CDN de fonte. Até lá, pilha de sistema — o ponto de troca está isolado
-em duas variáveis.
+```
+#00aeef   2.53 : 1     ciano
+#c8d400   1.63 : 1     lime
+```
 
-| Papel | Família | Uso |
-|-------|---------|-----|
-| `sans` | `system-ui, -apple-system, "Segoe UI", sans-serif` | Títulos e corpo |
-| `mono` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | Rótulos, códigos, todo número em coluna |
+Não são inutilizáveis — mudam de papel:
 
-Escala e pesos:
+- **Ciano** só em preenchimento com rótulo direto ao lado, nunca como texto sobre branco
+- **Lime** só como **faixa com texto navy por cima** — que é exatamente como o site usa em
+  "Time Cielo". Navy sobre lime tem contraste alto; lime sobre branco não tem
+- Nenhuma das duas carrega significado sozinha
 
-| Nível | Tamanho | Peso | Tracking |
-|-------|---------|------|----------|
-| Display | `clamp(29px, 4.4vw, 45px)` | 760 | −0.035em |
-| H2 | `clamp(19px, 2.4vw, 24px)` | 660 | −0.02em |
-| H3 | 15px | 620 | −0.008em |
-| Corpo | 15px | 400 | — |
-| Apoio | 13px | 400 | — |
-| Rótulo mono | 10px | 400–600 | +0.14em, caixa alta |
+## 3. Tipografia
 
-Números em coluna usam `font-variant-numeric: tabular-nums`. Números grandes isolados
-(valor de destaque) usam figuras proporcionais — `tabular-nums` deixa `121` frouxo em
-corpo grande.
+A face institucional é uma **sans geométrica humanista** de terminais levemente
+arredondados, com `a` de dois andares e `g` de um andar. Não consigo nomeá-la com
+segurança a partir do print, e o CSP de artifacts bloqueia CDN de fonte — então a pilha
+de sistema fica como substituta até o nome ser confirmado.
 
-## 5. Ponto de troca
+```
+--sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+```
 
-Quando os valores oficiais chegarem, só o bloco `theme.extend.colors` do
-`tailwind.tokens.js` muda. Nada no código de componente referencia hex diretamente.
+### A assinatura: peso misto na mesma linha
 
-Depois de trocar, **rode o validador de novo** — a paleta da marca precisa passar nas
-mesmas portas:
+O padrão mais característico do site não é a fonte, é como ela é usada:
+
+> **Te atender bem** e **estar ao seu lado** sempre que precisar
+> **Maquininha sem aluguel** e sem taxas escondidas
+
+Trechos em peso alto alternando com peso regular **dentro da mesma headline**, marcando o
+que importa. Isso é reproduzível com qualquer face e vale adotar — é o que faz o texto
+parecer Cielo mesmo sem a fonte oficial.
+
+### Escala
+
+| Nível | Tamanho | Peso | Cor |
+|-------|---------|------|-----|
+| Display | `clamp(30px, 4.4vw, 46px)` | 700 | `navy` |
+| H2 | `clamp(21px, 2.6vw, 30px)` | 700 | `navy` |
+| H3 | 17px | 600 | `navy` |
+| Corpo | 16px | 400 | `ink-2` |
+| Apoio | 14px | 400 | `ink-2` |
+| Rótulo mono | 10–11px | 500 | `muted` |
+
+Tracking praticamente neutro — o site não usa títulos apertados. Números em coluna com
+`tabular-nums`.
+
+## 4. Forma — a mudança maior
+
+Este é o ponto onde o protótipo atual mais diverge do site.
+
+| Elemento | Site Cielo | Protótipo atual |
+|----------|-----------|-----------------|
+| Botão | **pílula** (raio total) | 2px |
+| Cartão | ~16px, sombra suave | 2–3px, sem sombra |
+| Input | ~8px | — |
+| Densidade | muito respiro | densa |
+
+O protótipo foi desenhado como instrumento de precisão: cantos vivos, denso, sem sombra.
+A Cielo é o oposto — arredondada, arejada, amigável. **Adotar a marca significa reescrever
+a linguagem de forma**, não só trocar os hex.
+
+Tokens de raio:
+
+```
+sm: 8px      inputs, chips
+md: 12px     células de dado, faixas
+lg: 16px     cartões
+full: 9999px botões
+```
+
+Sombra de cartão: `0 2px 12px rgba(18, 38, 63, 0.08)`.
+
+## 5. Layout
+
+- Seções alternando **branco** e **cinza claro** (`bg`) em faixas de largura total
+- Títulos de seção **centralizados**, com subtítulo abaixo
+- Ícones em **linha** (não preenchidos), em `cyan` ou `blue`
+- Respiro vertical generoso entre blocos
+
+## 6. Ponto de troca
+
+Só o bloco `raw` do `tailwind.tokens.js` muda quando os valores oficiais chegarem. Depois
+de trocar, **rode o validador de novo**:
 
 ```bash
-node .claude/skills/../dataviz/scripts/validate_palette.js "<hex>,<hex>" \
+node <caminho>/dataviz/scripts/validate_palette.js "<hex>,<hex>" \
   --mode light --surface "#ffffff"
 ```
 
-Três caminhos para obter os valores reais:
+Pendências para fechar o padrão:
 
-1. Colar os hex aqui diretamente
-2. Enviar o brand book em PDF — o skill `pdf` já está instalado e extrai as cores
-3. Liberar `cielo.com.br` na política de rede do ambiente
-   ([documentação](https://code.claude.com/docs/en/claude-code-on-the-web)), que hoje
-   responde 403 no CONNECT
+1. **Hex exatos** do CSS ou do brand book
+2. **Nome da família tipográfica** institucional
+3. Se existe **design system interno** já publicado — se existir, ele manda, e este
+   documento vira apenas o mapeamento para os componentes do painel
