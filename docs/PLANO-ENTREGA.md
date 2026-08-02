@@ -27,11 +27,11 @@ A entrega é bem-sucedida se o PO conseguir responder, sozinho e em minutos:
 | # | Pergunta | O que ela exige |
 |---|----------|-----------------|
 | **P1** | Qual o volume que entra pelo atalho da Exceção? | Funil com o bypass explícito |
-| **P2** | O que a Exceção realmente faz com quem passa por ela? | Desenho pré-pós sobre janelas encerradas (§6.5) |
+| **P2** | O que a Exceção realmente faz com quem passa por ela? | Desenho pré-pós sobre janelas encerradas (§6.7) |
 | **P3** | A que custo real? | Taxa de expulsão pós-expiração hoje; outcome financeiro quando existir |
 | **P4** | E se eu mexer nas regras? | Simulador What-If sobre a base |
-| **P5** | Onde a base está inconsistente? | Violação de monotonicidade TCD0/TCD1 (§6.3) |
-| **P6** | O produto responde de forma estável? | Volatilidade de decisão entre consultas (§6.4) |
+| **P5** | Onde a base está inconsistente? | Violação de monotonicidade TCD0/TCD1 (§6.5) |
+| **P6** | O produto responde de forma estável? | Volatilidade de decisão entre consultas (§6.6) |
 
 Responder **P1** é um relatório. **P2**, **P5** e **P6** entregam números que hoje não
 existem em lugar nenhum. É esse o alvo.
@@ -124,11 +124,12 @@ o slide de fechamento da apresentação.
 Cada contrato é definido uma vez em Zod, em `packages/contracts`, e serve como DTO
 validado no NestJS, tipo estático no React e schema da tool exposta ao agente.
 
-### 3.5. IA entra por último
+### 3.5. IA entra sobre fundação pronta, nunca antes
 
-Fases 0→2 são inteiramente determinísticas. A camada de IA (Fase 3) é construída sobre
-fundação já validada. Invertida, a entrega vira um chatbot alucinando sobre dados que
-ninguém conferiu.
+As Fases 0→2 são inteiramente determinísticas: os números existem, são testados e estão
+na tela antes de qualquer LLM tocar neles. Só então o agente entra (Fase 3), e entra
+como navegação sobre dados já validados. Invertida a ordem, a entrega vira um chatbot
+alucinando sobre números que ninguém conferiu.
 
 ---
 
@@ -159,7 +160,7 @@ Regras confirmadas:
 - **Gate 4 é paralelo e por trilho.**
 - **Combinação é AND por trilho.** Verificado contra todos os exemplos fornecidos.
 - **Monotonicidade esperada:** `tcd1 = 1` deveria implicar `tcd0 = 1`. O estado
-  `{tcd0:0, tcd1:1}` é inconsistente e ocorre em produção (§6.3).
+  `{tcd0:0, tcd1:1}` é inconsistente e ocorre em produção (§6.5).
 - **Invariante do modelo:** sem `ec` resolvido e chegando ao gate 4, o cliente é sempre
   avaliado por `M1` nas duas dimensões. A recíproca **não** vale — `M1` também ocorre com
   `ec` presente. Vira regra de validação na ingestão e caso de teste.
@@ -346,7 +347,62 @@ adiada de LLM.
 
 ## 6. Visualização
 
-### 6.1. Um Sankey por trilho
+### 6.1. Arquitetura de informação — do panorama ao caso especial
+
+A ordem de leitura não segue o interesse analítico, segue o volume. A maior parte da
+base é decidida no gate 4 pelos modelos; Exceção, STAR e Penhora/Fumaça são caminhos de
+borda. Abrir pela Exceção — como este plano fazia — faz uma borda parecer o produto e
+distorce a noção de proporção antes de qualquer número aparecer.
+
+| Nível | Conteúdo | Pergunta que o PO faz aqui |
+|-------|----------|---------------------------|
+| **1 · Panorama** | Composição por gate de saída e matriz dimensão × modelo (§6.2) | "Como a base está sendo decidida?" |
+| **2 · Detalhe do cenário** | Por modelo: drift, decomposição da reprovação, inconsistência, volatilidade | "O que mudou, e onde?" |
+| **3 · Caminhos especiais** | Exceção (pré-pós, contrafactual, vigência), STAR, Penhora/Fumaça | "E os casos que fogem do fluxo?" |
+
+**O agente é o mecanismo de descida.** Em vez de construir vinte telas de drill-down, o
+panorama é a única tela fixa e o agente faz a travessia sob demanda: o PO lê o resumo,
+pergunta *"por que o M3 de crédito caiu essa semana?"*, e recebe o nível 2 daquele
+recorte. Isso muda o papel do chat de recurso lateral para **camada de navegação** — e
+resolve estruturalmente o problema do chatbot órfão (§8.3), em vez de apenas mitigá-lo.
+
+Para a apresentação, a ordem também é melhor dramaturgia: base → detalhe → anomalia.
+Chega-se à Exceção tendo estabelecido a proporção, em vez de abrir por ela.
+
+### 6.2. Panorama por modelo (nível 1)
+
+Primeira tela. Precisa responder "como a base está sendo decidida" sem induzir a
+conclusão errada — e o risco aqui é concreto.
+
+**A armadilha:** colocar M1, M2 e M3 lado a lado numa barra ranqueada por taxa de
+aprovação convida à leitura *"M3 aprova mais, logo M3 é melhor"*. Como o modelo é proxy
+de maturidade do cliente (§4.2b), são populações diferentes — as taxas **não são
+comparáveis entre si**. Se a primeira tela ranqueia, o PO forma a crença em segundos e
+nenhuma nota de rodapé desfaz depois.
+
+**A estrutura que impede a leitura errada:** uma matriz **dimensão × modelo**, não uma
+lista de três. Fraude e Crédito usam os mesmos rótulos para modelos diferentes (§4.2a),
+e a matriz comunica isso de saída.
+
+```
+                    M1                M2                M3
+  Fraude        volume · share    volume · share         —
+                taxa por trilho   taxa por trilho
+                tendência 30d     tendência 30d
+
+  Crédito       volume · share    volume · share    volume · share
+                taxa por trilho   taxa por trilho   taxa por trilho
+                tendência 30d     tendência 30d     tendência 30d
+```
+
+Cada célula declara a **população que atende** antes da taxa. A tendência é a comparação
+que de fato vale: **do mesmo modelo ao longo do tempo**, nunca entre modelos. Onde
+qualquer corte cruzado aparecer, o aviso de viés de seleção acompanha o número.
+
+Acima da matriz, uma faixa de composição mostra quanto da base sequer chegou ao gate 4 —
+é o que dá contexto de proporção para os caminhos especiais do nível 3.
+
+### 6.3. Um Sankey por trilho
 
 Sankey representa mal paralelismo e reconvergência, e o gate 4 é exatamente isso.
 
@@ -376,7 +432,7 @@ Regras visuais:
 - Clique em qualquer nó → drill-down do coorte
 - Filtros de primeira classe: **EC resolvido × não resolvido** e **modelo**
 
-### 6.2. Matriz TCD0 × TCD1
+### 6.4. Matriz TCD0 × TCD1
 
 |              | TCD1 = 1 | TCD1 = 0 |
 |--------------|----------|----------|
@@ -386,7 +442,7 @@ Regras visuais:
 O quadrante `{tcd0:0, tcd1:1}` viola a monotonicidade esperada e é destacado como
 anomalia. Todos os quadrantes são clicáveis.
 
-### 6.3. Painel de Inconsistência (P5)
+### 6.5. Painel de Inconsistência (P5)
 
 Requisito explícito: expor os casos em que `tcd1 = 1` e `tcd0 = 0`, que ocorrem em
 produção sem que deveriam.
@@ -415,7 +471,7 @@ O painel entrega volume e taxa de violações com evolução temporal, distribui
 origem, concentração por modelo e por status de EC, e lista drill-down por `merchantRef`,
 exportável para o time responsável.
 
-### 6.4. Painel de Volatilidade (P6)
+### 6.6. Painel de Volatilidade (P6)
 
 Se um cliente pode ser consultado várias vezes no mesmo dia (§4.5), então ele pode
 **receber respostas diferentes no mesmo dia**. Isso é mensurável com o dado que já existe
@@ -434,7 +490,7 @@ Duas leituras de negócio saem daqui. A primeira é de experiência: um cliente 
 operacional: se a resposta depende de quando se pergunta, o número de aprovações depende
 do padrão de tráfego de quem integrou, não da base.
 
-### 6.5. Painel da Exceção — desenho pré-pós (P2)
+### 6.7. Painel da Exceção — desenho pré-pós (P2)
 
 A Exceção tem vigência com início e fim, geralmente curta. Logo o mesmo cliente é avaliado
 pelos modelos **fora** da janela, antes ou depois. A decisão que a Exceção suprimiu não é
@@ -467,7 +523,7 @@ expirou**. Não é custo financeiro, é custo de decisão e de relacionamento �
 inteiramente no dado atual. Quando o outcome financeiro aparecer, encaixa como coluna
 adicional na mesma tabela, sem redesenho.
 
-### 6.6. Painel What-If (P4)
+### 6.8. Painel What-If (P4)
 
 Controles para ligar/desligar e parametrizar regras, com recorte por segmento (ex.:
 *desligar a Exceção apenas para clientes sem EC resolvido*). Ao aplicar, o Sankey mostra
@@ -482,7 +538,7 @@ Com massa sintética, o gerador deixa de ser utilitário e passa a ser peça cen
 precisa produzir:
 
 **a) Múltiplas consultas por cliente**, com distribuição realista (cauda longa: poucos
-clientes com centenas de consultas, muitos com uma só). Sem isso, §4.5 e §6.4 não têm o
+clientes com centenas de consultas, muitos com uma só). Sem isso, §4.5 e §6.6 não têm o
 que medir, e o funil pareceria correto por acidente.
 
 **b) Flips de decisão** entre consultas do mesmo cliente, incluindo entradas e saídas do
@@ -500,7 +556,7 @@ para validar o método de coorte comparável.
 **f) Outcome correlacionado com o perfil** — inadimplência e fraude realizada. Sem
 outcome, **P3** não tem resposta nem fictícia.
 
-**g) Inconsistências plantadas** nas três origens da §6.3, em proporções distintas.
+**g) Inconsistências plantadas** nas três origens da §6.5, em proporções distintas.
 
 **h) Cenários plantados** — insights escondidos na massa, para descoberta ao vivo:
 
@@ -561,10 +617,22 @@ Nenhuma tool aceita ou retorna `id`. `merchantRef` é a única referência a cli
 Toda tool que conta clientes exige `unit` explícito — não há default implícito capaz de
 produzir a leitura errada da §4.5.
 
-### 8.3. Evitando o chatbot órfão
+### 8.3. O chat é a camada de navegação, não um recurso lateral
 
-- **Perguntas sugeridas contextuais**, que mudam conforme o filtro ativo
-- **Resumo executivo automático** já renderizado ao abrir a tela
+O risco do chatbot órfão — caixa de texto vazia que ninguém usa — não se resolve com
+mitigação de UI. Resolve-se dando a ele uma função que nenhuma outra parte da interface
+cumpre.
+
+Com a arquitetura de informação em três níveis (§6.1), essa função existe: **o agente é
+o mecanismo de descida**. O panorama é a única tela fixa; a passagem para o nível 2 e
+para o nível 3 acontece por pergunta, não por vinte telas de drill-down construídas à
+mão. Isso troca esforço de front-end por capacidade de consulta e, principalmente, dá ao
+chat um papel do qual a navegação depende.
+
+Complementos que continuam valendo:
+
+- **Perguntas sugeridas contextuais**, que mudam conforme o nível e o recorte ativo
+- **Resumo executivo automático** já renderizado no panorama
 - Resposta em **streaming**, com o gráfico aparecendo antes de o texto terminar
 
 ### 8.4. O que separa isto de um brinquedo
@@ -602,7 +670,7 @@ crédito tem implicação regulatória direta — inclusive o direito à revisã
 — e o desenho é deliberadamente *human-in-the-loop*: a IA reúne e recomenda, a pessoa
 decide. Nenhuma tool do copiloto tem efeito de escrita sobre a vigência.
 
-**A triagem que se paga sozinha.** O quadrante *Aprovado → Aprovado* (§6.5) mostra
+**A triagem que se paga sozinha.** O quadrante *Aprovado → Aprovado* (§6.7) mostra
 clientes que os modelos aprovariam de qualquer forma. Para esses, a solicitação pode ser
 respondida **sem consumir análise humana** — e isso não é a IA decidindo risco, é a IA
 informando que a pergunta era desnecessária. Segura, defensável, e o ganho é imediato.
@@ -630,38 +698,56 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 
 **Pronto quando:** `pnpm dev` sobe tudo e o banco tem massa reproduzível.
 
-### Fase 1 — Funil, inconsistência e volatilidade
+A ordem segue os três níveis da §6.1 — panorama, detalhe, caminhos especiais — e não a
+ordem em que os achados apareceram na análise.
+
+### Fase 1 — Panorama (nível 1)
 - Repositories JSONB, índices GIN e de deduplicação, views materializadas
+- `GetModelOverview` — matriz dimensão × modelo, com população declarada e tendência
 - `GetFunnel` por trilho, período, unidade e segmento
 - Sankey por trilho + matriz TCD0×TCD1, com deltas e drill-down
+
+**Pronto quando:** o PO responde "como a base está sendo decidida?" e **P1** sozinho.
+
+### Fase 2 — Detalhe dos cenários (nível 2)
 - `GetInconsistencyReport` e `GetVolatilityReport` com seus painéis
+- Drift por modelo e decomposição da reprovação por causa
 
-**Pronto quando:** o PO responde **P1**, **P5** e **P6** sozinho.
+**Pronto quando:** o PO responde **P5** e **P6** sozinho.
 
-### Fase 2 — Contrafactual, motor e simulação
-- Motor de regras puro no domínio, com cobertura de teste
-- `GetExceptionCounterfactual`, priorizando observação direta sobre coorte comparável
-- `SimulateScenario` em SQL parametrizado
-- `ValidateEngine` e indicador de fidelidade
-- Painel What-If com comparação lado a lado
-
-**Pronto quando:** o PO responde **P2**, **P3** e **P4**. *Aqui a entrega deixa de ser dashboard e vira ferramenta de decisão.*
-
-### Fase 3 — Camada de IA
-- `LlmProvider` plugável, agente com as 8 tools
+### Fase 3 — Agente como camada de navegação
+- `LlmProvider` plugável, agente com as tools dos níveis 1 e 2
 - Narrativa automática e explicação de decisão
 - Chat com streaming e generative UI
 
-**Pronto quando:** uma pergunta em linguagem natural devolve um gráfico correto.
+**Pronto quando:** uma pergunta em linguagem natural desce do panorama ao detalhe com o
+gráfico correto.
 
-### Fase 4 — Maturidade
+*Entra aqui, e não depois, porque a partir de dois níveis o agente substitui telas de
+drill-down em vez de decorá-las (§6.1, §8.3). Antes disso não teria o que navegar.*
+
+### Fase 4 — Caminhos especiais (nível 3)
+- Motor de regras puro no domínio, com cobertura de teste
+- `GetExceptionCounterfactual`, priorizando observação direta sobre coorte comparável
+- Auditoria de vigência e exceções não utilizadas
+- `SimulateScenario` em SQL parametrizado, `ValidateEngine` e indicador de fidelidade
+- Painel What-If com comparação lado a lado
+- STAR e Penhora/Fumaça
+
+**Pronto quando:** o PO responde **P2**, **P3** e **P4**. *Aqui a entrega deixa de ser dashboard e vira ferramenta de decisão.*
+
+> **Trade-off assumido.** Esta fase concentra o resultado mais forte da entrega e agora
+> vem depois do agente. Se o tempo apertar, é ela que precisa ser protegida — não a
+> Fase 5.
+
+### Fase 5 — Maturidade
 - Evals em CI, tracing, guardrails
 - Performance (índices revisados, cache, refresh de matviews)
 - Roteiro de demo ensaiado
 
 **Pronto quando:** a entrega se defende sozinha sob perguntas técnicas.
 
-### Fase 5 — Copiloto de Concessão *(opcional, alto impacto)*
+### Fase 6 — Copiloto de Concessão *(opcional, alto impacto)*
 - Dossiê de decisão montado sobre os use cases já existentes
 - Triagem automática dos casos que os modelos já aprovam
 - Registro estruturado da decisão humana
@@ -669,7 +755,7 @@ Cada fase é demonstrável sozinha e recebe uma tag git.
 **Pronto quando:** uma solicitação real de exceção é respondida com evidência em vez de
 intuição.
 
-Custo marginal baixo — os use cases já existem desde a Fase 2, e o que falta é uma tela e
+Custo marginal baixo — os use cases já existem desde a Fase 4, e o que falta é uma tela e
 um prompt. Fica fora do caminho crítico do desafio, mas é o que transforma a entrega de
 "visibilidade para o PO" em "intervenção no processo". Vale ao menos como protótipo
 demonstrável na apresentação.
@@ -715,7 +801,7 @@ Hipóteses adotadas para não bloquear a Fase 0.
    predomina. *Hipótese adotada: não disponível; rótulo conjunto.*
 7. **Existe outcome financeiro** (inadimplência, fraude confirmada, churn) e em que
    janela? Em pesquisa pelo time. Não bloqueia: **P3** opera com a taxa de expulsão
-   pós-expiração (§6.5) até que exista. *Hipótese adotada: ausente por ora, plugável.*
+   pós-expiração (§6.7) até que exista. *Hipótese adotada: ausente por ora, plugável.*
 8. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
    `ExplainDecision`, mas não bloqueiam. *Hipótese adotada: não disponíveis.*
 9. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
