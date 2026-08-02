@@ -1,0 +1,734 @@
+<title>TC Smart Eligibility — painel do PO</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --ground:  #eceeec;
+    --surface: #f9faf9;
+    --sunken:  #e2e6e3;
+    --ink:     #10161a;
+    --ink-2:   #48545e;
+    --mute:    #78848d;
+    --line:    #d3d9d5;
+    --hair:    #e2e6e3;
+
+    --models:    #2a78d6;
+    --models-lo: #cde2fb;
+    --exception: #eb6834;
+    --dim:       #b0aea5;
+
+    --good:     #0ca30c;
+    --warning:  #fab219;
+    --serious:  #ec835a;
+    --critical: #d03b3b;
+
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --ground:  #0b1116;
+      --surface: #121b21;
+      --sunken:  #0e161b;
+      --ink:     #f2f5f4;
+      --ink-2:   #a3b0b8;
+      --mute:    #6f7d86;
+      --line:    #1f2b33;
+      --hair:    #1a242b;
+
+      --models:    #3987e5;
+      --models-lo: #184f95;
+      --exception: #d95926;
+      --dim:       #a3a199;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:  #0b1116;
+    --surface: #121b21;
+    --sunken:  #0e161b;
+    --ink:     #f2f5f4;
+    --ink-2:   #a3b0b8;
+    --mute:    #6f7d86;
+    --line:    #1f2b33;
+    --hair:    #1a242b;
+
+    --models:    #3987e5;
+    --models-lo: #184f95;
+    --exception: #d95926;
+    --dim:       #a3a199;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ tipografia ═══ */
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  h1 {
+    font-size: clamp(29px, 4.4vw, 45px);
+    font-weight: 760;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.4vw, 24px);
+    font-weight: 660;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  h3 { font-size: 15px; font-weight: 620; letter-spacing: -0.008em; }
+
+  /* ═══ estrutura: gutter da espinha + conteúdo ═══ */
+
+  .page { max-width: 1160px; margin: 0 auto; padding: 0 22px 96px; }
+
+  .band { display: grid; grid-template-columns: 74px minmax(0, 1fr); }
+  @media (max-width: 760px) { .band { grid-template-columns: 30px minmax(0, 1fr); } }
+
+  /* a espinha percorre todas as seções: é a sequência real de portões,
+     e por isso os marcadores são numerados */
+  .rails { position: relative; }
+  .rails::before {
+    content: "";
+    position: absolute;
+    left: 15px; top: 0; bottom: 46px;
+    width: 2px;
+    background: var(--line);
+  }
+  @media (max-width: 760px) { .rails::before { left: 6px; } }
+
+  .spine { position: relative; }
+
+  /* tique horizontal ligando o marcador ao conteúdo */
+  .node::after {
+    content: "";
+    position: absolute;
+    left: 16px; top: 50%;
+    width: 30px; height: 2px;
+    background: var(--nc);
+    transform: translateY(-1px);
+  }
+  @media (max-width: 760px) { .node::after { display: none; } }
+
+  .node {
+    position: absolute;
+    left: 10px; top: 34px;
+    width: 12px; height: 12px;
+    background: var(--nc, var(--line));
+    --nc: var(--line);
+  }
+  .node.on  { --nc: var(--models); }
+  .node.byp { --nc: var(--exception); }
+  @media (max-width: 760px) { .node { left: 1px; } }
+
+  .gate-no {
+    position: absolute;
+    left: 0; top: 56px;
+    width: 32px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--nc-t, var(--mute));
+  }
+  .node.on + .gate-no  { --nc-t: var(--models); }
+  .node.byp + .gate-no { --nc-t: var(--exception); }
+  @media (max-width: 760px) { .gate-no { left: -10px; top: 54px; } }
+
+  .flow-key { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 16px; }
+
+  .content { padding: 22px 0 44px; min-width: 0; }
+
+  /* ═══ hero ═══ */
+
+  .hero { padding: 60px 0 30px; display: flex; flex-direction: column; gap: 16px; }
+  .hero p {
+    max-width: 60ch;
+    color: var(--ink-2);
+    font-size: 15.5px;
+  }
+  .hero-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 6px; padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .flow { margin: 26px 0 0; }
+  .flow svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .flow-cap {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--ink-2);
+    max-width: 68ch;
+  }
+
+  .bandpath { transition: opacity 140ms ease; }
+  .bandpath:hover { opacity: 0.82; }
+
+  /* ═══ blocos ═══ */
+
+  .lead { color: var(--ink-2); font-size: 14.5px; max-width: 66ch; margin-top: 8px; }
+
+  .head-row {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  }
+  .basis {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--ink-2); background: var(--sunken);
+    padding: 3px 8px; font-variant-numeric: tabular-nums;
+  }
+
+  /* matriz dimensão × modelo */
+  .mtx { margin-top: 22px; display: flex; flex-direction: column; gap: 2px; }
+  .mtx-hd, .mtx-row {
+    display: grid;
+    grid-template-columns: 96px repeat(3, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .mtx-hd span {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--mute); padding: 0 0 6px 12px;
+  }
+  .mtx-dim {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink);
+    background: var(--sunken); padding: 14px 12px;
+  }
+  .dim-key { width: 3px; align-self: stretch; background: var(--kc); }
+
+  .mcell {
+    background: var(--surface);
+    padding: 13px 14px 14px;
+    display: flex; flex-direction: column; gap: 2px;
+    border-top: 2px solid var(--kc);
+    min-width: 0;
+  }
+  .mcell.void {
+    background: transparent;
+    border-top-color: transparent;
+    border-left: 1px dashed var(--line);
+  }
+  .mcell-v { font-size: 21px; font-weight: 640; letter-spacing: -0.02em; }
+  .mcell-pop { font-family: var(--mono); font-size: 11px; color: var(--mute); }
+  .mcell-rt {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--hair);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .rt-line {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .rt-line b { color: var(--ink); font-weight: 600; }
+  .trend { font-family: var(--mono); font-size: 11.5px; margin-top: 6px; }
+  .trend.dn { color: var(--critical); font-weight: 600; }
+  .trend.fl { color: var(--mute); }
+  .void-note {
+    font-family: var(--mono); font-size: 10.5px; color: var(--mute);
+    align-self: center; text-align: center; padding: 0 8px;
+  }
+
+  .caution {
+    margin-top: 16px; padding: 12px 14px;
+    background: var(--sunken);
+    border-left: 2px solid var(--warning);
+    font-size: 13px; color: var(--ink-2);
+  }
+  .caution b { color: var(--ink); font-weight: 620; }
+
+  /* medidor */
+  .meter { margin-top: 20px; }
+  .meter-bar { height: 30px; background: var(--models-lo); display: flex; }
+  .meter-fill { background: var(--models); height: 100%; }
+  .meter-lg { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 10px; }
+  .lg { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); }
+  .sw { width: 10px; height: 10px; flex: none; }
+  .lg b { font-family: var(--mono); color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .callout {
+    margin-top: 16px; padding: 13px 15px;
+    background: var(--surface); border-left: 2px solid var(--models);
+    font-size: 14px; color: var(--ink-2);
+  }
+  .callout b { color: var(--ink); font-weight: 620; }
+
+  /* barra de ênfase + causas */
+  .ebar { display: flex; gap: 2px; height: 30px; margin-top: 18px; }
+  .ebar div { transition: flex-grow 240ms ease; }
+  .ebar-lb { display: flex; justify-content: space-between; gap: 14px; margin-top: 9px; }
+
+  .causes { margin-top: 14px; display: flex; flex-direction: column; }
+  .cause {
+    display: grid; grid-template-columns: minmax(0,1fr) 34% 62px 86px;
+    align-items: center; gap: 14px;
+    padding: 10px 0; border-top: 1px solid var(--hair);
+  }
+  .cause:last-child { border-bottom: 1px solid var(--hair); }
+  @media (max-width: 720px) {
+    .cause { grid-template-columns: minmax(0,1fr) 62px; }
+    .cause .ctrack, .cause .cvd { display: none; }
+  }
+  .cnm { display: flex; align-items: center; gap: 9px; font-size: 13.5px; min-width: 0; }
+  .ctrack { height: 6px; }
+  .cbar { height: 6px; display: block; transition: width 240ms ease; }
+  .cpp { font-family: var(--mono); font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cvd { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; text-align: right; color: var(--mute); }
+  .cvd.flag { color: var(--critical); font-weight: 620; }
+
+  .alert {
+    margin-top: 16px; padding: 13px 15px;
+    border: 1px solid var(--critical); background: var(--surface);
+    font-size: 13.5px; color: var(--ink-2);
+  }
+  .alert b { color: var(--ink); font-weight: 620; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* quadrantes pré-pós */
+  .quads { margin-top: 20px; display: grid; grid-template-columns: 108px 1fr 1fr; gap: 2px; }
+  @media (max-width: 760px) { .quads { grid-template-columns: 1fr; } .qh, .qr { display: none !important; } .qflow { display: block !important; } }
+  .qh {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--mute);
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px;
+  }
+  .qr {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--mute);
+    display: flex; align-items: center; justify-content: flex-end;
+    text-align: right; padding-right: 12px;
+  }
+  .q {
+    background: var(--surface); padding: 15px 16px 16px;
+    border-top: 2px solid var(--qc);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .qflow { display: none; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); margin-bottom: 4px; }
+  .qlb { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .qgl { width: 8px; height: 8px; background: var(--qc); flex: none; }
+  .qpct { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+  .qn { font-family: var(--mono); font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+  .qrd { font-size: 12.5px; color: var(--ink-2); margin-top: 5px; text-wrap: pretty; }
+
+  .cov { margin-top: 18px; display: flex; flex-direction: column; }
+  .cov-r { display: grid; grid-template-columns: minmax(0,1fr) 30% 104px; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid var(--hair); }
+  .cov-r:last-child { border-bottom: 1px solid var(--hair); }
+  @media (max-width: 700px) { .cov-r { grid-template-columns: minmax(0,1fr) 104px; } .cov-r .cov-t { display: none; } }
+  .cov-l { font-size: 13px; color: var(--ink-2); }
+  .cov-t { height: 6px; background: var(--models-lo); }
+  .cov-f { height: 6px; background: var(--models); display: block; }
+  .cov-v { font-family: var(--mono); font-size: 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* ═══ agente ═══ */
+
+  .agent { background: var(--surface); border: 1px solid var(--line); padding: 20px; margin-top: 4px; }
+  .ask { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .ask button {
+    font-family: var(--sans); font-size: 13px;
+    background: var(--ground); color: var(--ink-2);
+    border: 1px solid var(--line); padding: 7px 12px; cursor: pointer;
+    text-align: left;
+  }
+  .ask button:hover { color: var(--ink); border-color: var(--models); }
+  .ask button:focus-visible { outline: 2px solid var(--models); outline-offset: 2px; }
+  .ask button[aria-pressed="true"] { border-color: var(--models); color: var(--ink); }
+
+  .reply { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hair); }
+  .reply-q { font-size: 13px; color: var(--mute); margin-bottom: 8px; }
+  .reply-a { font-size: 14.5px; color: var(--ink); max-width: 64ch; }
+  .reply-a b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .reply-src { margin-top: 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+
+  footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--mute); max-width: 74ch; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <!-- ═══ HERO: a tese é o fluxo ═══ -->
+  <header class="hero">
+    <span class="tag">TC · Vendeu tá na conta — elegibilidade</span>
+    <h1>Onde a base está sendo decidida</h1>
+    <p>
+      Toda solicitação atravessa quatro portões em ordem. Três encerram a decisão antes que
+      qualquer modelo de risco seja consultado — e o primeiro deles não reprova: aprova.
+    </p>
+
+    <div class="flow">
+      <svg viewBox="0 -108 1000 434" role="img" aria-label="De 118.700 clientes, 12.400 entram pelo Fluxo de Exceção contornando os modelos; 6.900 param em Prevenção STAR; 4.200 em Penhora e Fumaça; 95.200 são avaliados pelos modelos, dos quais 71.400 aprovados e 23.800 reprovados.">
+        <!-- a maquinaria: faixas retas, sem cruzamento -->
+        <path class="bandpath" fill="var(--models)" fill-opacity="0.88" d="M 14,49.3 H 986 V 217.7 H 14 Z"/>
+        <path class="bandpath" fill="var(--models)" fill-opacity="0.3"  d="M 14,217.7 H 986 V 273.8 H 14 Z"/>
+        <path class="bandpath" fill="var(--dim)"    fill-opacity="0.85" d="M 14,273.8 H 986 V 290.1 H 14 Z"/>
+        <path class="bandpath" fill="var(--dim)"    fill-opacity="0.5"  d="M 14,290.1 H 986 V 300 H 14 Z"/>
+
+        <!-- o desvio: o único movimento da página -->
+        <path class="bandpath" fill="var(--exception)" fill-opacity="0.92"
+              d="M 14,20 C 330,-108 670,-108 986,20 L 986,49.3 C 670,-70 330,-70 14,49.3 Z"/>
+
+        <rect x="0" y="20" width="14" height="280" fill="var(--ink)"/>
+        <rect x="986" y="20" width="14" height="197.7" fill="var(--ink)"/>
+        <rect x="986" y="217.7" width="14" height="82.3" fill="var(--mute)"/>
+
+        <text x="0" y="10" font-family="ui-monospace, monospace" font-size="11.5" letter-spacing="1.4" fill="currentColor">118.700 CLIENTES</text>
+        <text x="1000" y="10" text-anchor="end" font-family="ui-monospace, monospace" font-size="11.5" letter-spacing="1.4" fill="currentColor">ELEGÍVEL 83.800</text>
+        <text x="1000" y="316" text-anchor="end" font-family="ui-monospace, monospace" font-size="11.5" letter-spacing="1.4" fill="var(--mute)">INELEGÍVEL 34.900</text>
+
+        <text x="500" y="-88" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" font-weight="600" letter-spacing="1.6" fill="var(--exception)">FLUXO DE EXCEÇÃO · 12.400 · NENHUM MODELO É CONSULTADO</text>
+
+        <text x="34" y="118" font-family="ui-monospace, monospace" font-size="12" letter-spacing="1.4" fill="#f2f5f4">MODELOS · APROVADO</text>
+        <text x="34" y="136" font-family="ui-monospace, monospace" font-size="15" font-weight="600" fill="#f2f5f4">71.400</text>
+        <text x="34" y="251" font-family="ui-monospace, monospace" font-size="11.5" letter-spacing="1.4" fill="currentColor">MODELOS · REPROVADO 23.800</text>
+      </svg>
+
+      <div class="flow-key">
+        <span class="lg"><i class="sw" style="background:var(--dim);opacity:.85"></i>Prevenção STAR <b>6.900</b></span>
+        <span class="lg"><i class="sw" style="background:var(--dim);opacity:.5"></i>Penhora e Fumaça <b>4.200</b></span>
+      </div>
+
+      <p class="flow-cap">
+        O arco é o Fluxo de Exceção: 12.400 clientes entram elegíveis sem que fraude ou
+        crédito cheguem a ser consultados. Para eles a decisão de risco não é sobreposta —
+        ela nunca chega a existir.
+      </p>
+    </div>
+
+    <div class="hero-meta">
+      <span class="tag">1 jul – 31 jul 2026</span>
+      <span class="tag">Clientes distintos · última consulta</span>
+      <span class="tag">Dados fictícios</span>
+    </div>
+  </header>
+
+  <div class="rails">
+
+  <!-- ═══ NÍVEL 1 ═══ -->
+  <section class="band">
+    <div class="spine"><i class="node on"></i><span class="gate-no">G4</span></div>
+    <div class="content">
+      <div class="head-row">
+        <h2>Quem decide os 95.200 que chegam aos modelos</h2>
+        <span class="basis">80,2% da base</span>
+      </div>
+      <p class="lead">
+        Fraude e crédito avaliam em paralelo, cada um com seu próprio conjunto de modelos.
+        Os nomes coincidem, os modelos não.
+      </p>
+
+      <div class="mtx">
+        <div class="mtx-hd">
+          <span></span><span>M1</span><span>M2</span><span>M3</span>
+        </div>
+
+        <div class="mtx-row" style="--kc:var(--models)">
+          <div class="mtx-dim"><i class="dim-key"></i>Fraude</div>
+          <div class="mcell">
+            <span class="mcell-v">41.300</span>
+            <span class="mcell-pop">43,4% de quem chega</span>
+            <span class="mcell-rt">
+              <span class="rt-line">TCD0 <b>88,2%</b></span>
+              <span class="rt-line">TCD1 <b>81,4%</b></span>
+            </span>
+            <span class="trend fl">30d −1,2 pp</span>
+          </div>
+          <div class="mcell">
+            <span class="mcell-v">53.900</span>
+            <span class="mcell-pop">56,6% de quem chega</span>
+            <span class="mcell-rt">
+              <span class="rt-line">TCD0 <b>94,1%</b></span>
+              <span class="rt-line">TCD1 <b>90,3%</b></span>
+            </span>
+            <span class="trend fl">30d +0,4 pp</span>
+          </div>
+          <div class="mcell void"><span class="void-note">fraude não usa M3</span></div>
+        </div>
+
+        <div class="mtx-row" style="--kc:var(--exception)">
+          <div class="mtx-dim"><i class="dim-key"></i>Crédito</div>
+          <div class="mcell">
+            <span class="mcell-v">38.700</span>
+            <span class="mcell-pop">40,7% de quem chega</span>
+            <span class="mcell-rt">
+              <span class="rt-line">TCD0 <b>62,4%</b></span>
+              <span class="rt-line">TCD1 <b>51,8%</b></span>
+            </span>
+            <span class="trend fl">30d −0,8 pp</span>
+          </div>
+          <div class="mcell">
+            <span class="mcell-v">34.100</span>
+            <span class="mcell-pop">35,8% de quem chega</span>
+            <span class="mcell-rt">
+              <span class="rt-line">TCD0 <b>78,9%</b></span>
+              <span class="rt-line">TCD1 <b>70,2%</b></span>
+            </span>
+            <span class="trend fl">30d +0,2 pp</span>
+          </div>
+          <div class="mcell">
+            <span class="mcell-v">22.400</span>
+            <span class="mcell-pop">23,5% de quem chega</span>
+            <span class="mcell-rt">
+              <span class="rt-line">TCD0 <b>86,3%</b></span>
+              <span class="rt-line">TCD1 <b>79,6%</b></span>
+            </span>
+            <span class="trend dn">30d −3,1 pp</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="caution">
+        <b>As taxas não se comparam entre modelos.</b> O modelo aplicado depende da maturidade
+        do cliente, então cada coluna atende uma população diferente. Ler "M3 aprova mais,
+        logo M3 é melhor" é viés de seleção. A comparação que vale é a de cada modelo
+        consigo mesmo ao longo do tempo — a coluna de tendência.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ AGENTE ═══ -->
+  <section class="band">
+    <div class="spine"></div>
+    <div class="content">
+      <div class="agent">
+        <span class="tag">Analista</span>
+        <h3 style="margin-top:8px">Pergunte, em vez de procurar</h3>
+        <p class="lead" style="margin-top:6px">
+          O panorama é a única tela fixa. A descida para o detalhe acontece por pergunta.
+        </p>
+        <div class="ask" role="group" aria-label="Perguntas sugeridas">
+          <button type="button" data-a="drift" aria-pressed="false">Por que o M3 de crédito caiu 3,1 pp?</button>
+          <button type="button" data-a="flip" aria-pressed="false">Os clientes recebem sempre a mesma resposta?</button>
+          <button type="button" data-a="exc" aria-pressed="false">A Exceção está deixando entrar quem não deveria?</button>
+        </div>
+        <div class="reply" id="reply" hidden>
+          <p class="reply-q" id="rq"></p>
+          <p class="reply-a" id="ra"></p>
+          <p class="reply-src" id="rs"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ NÍVEL 2 ═══ -->
+  <section class="band" id="sec-flip">
+    <div class="spine"><i class="node on"></i><span class="gate-no">G4</span></div>
+    <div class="content">
+      <div class="head-row">
+        <h2>O mesmo cliente, respostas diferentes</h2>
+        <span class="basis">41.200 com 2+ consultas · 35% da base</span>
+      </div>
+      <p class="lead">
+        Um cliente pode ser consultado quantas vezes quiser no mesmo dia. Quando a resposta
+        muda entre uma consulta e outra, quase sempre há explicação — o que importa é o que
+        sobra depois de descontá-las.
+      </p>
+
+      <div class="meter">
+        <div class="meter-bar"><div class="meter-fill" style="width:76.2%"></div></div>
+        <div class="meter-lg">
+          <span class="lg"><i class="sw" style="background:var(--models)"></i>Elegível em todas as consultas <b>52.100</b></span>
+          <span class="lg"><i class="sw" style="background:var(--models-lo)"></i>Só em algumas <b>16.300</b></span>
+        </div>
+        <p class="callout">
+          <b>16.300 clientes</b> receberam respostas diferentes dentro do mesmo período. A
+          distância entre "elegível ao menos uma vez" e "elegível sempre" <em>é</em> a
+          volatilidade — não são duas métricas concorrentes.
+        </p>
+      </div>
+
+      <h3 style="margin-top:34px">De onde vêm os flips</h3>
+      <div class="ebar">
+        <div style="flex-grow:17.2;background:var(--dim)"></div>
+        <div style="flex-grow:1.2;background:var(--critical)"></div>
+      </div>
+      <div class="ebar-lb">
+        <span class="lg"><i class="sw" style="background:var(--dim)"></i>Esperado <b>17,2 pp</b></span>
+        <span class="lg"><i class="sw" style="background:var(--critical)"></i>Sem explicação <b>1,2 pp</b></span>
+      </div>
+
+      <div class="causes">
+        <div class="cause">
+          <span class="cnm"><i class="sw" style="background:var(--dim)"></i>Entrada ou saída de janela de exceção</span>
+          <span class="ctrack"><i class="cbar" style="width:100%;background:var(--dim)"></i></span>
+          <span class="cpp num">11,2 pp</span><span class="cvd">esperado</span>
+        </div>
+        <div class="cause">
+          <span class="cnm"><i class="sw" style="background:var(--dim)"></i>Mudança de modelo aplicado</span>
+          <span class="ctrack"><i class="cbar" style="width:36.6%;background:var(--dim)"></i></span>
+          <span class="cpp num">4,1 pp</span><span class="cvd">esperado</span>
+        </div>
+        <div class="cause">
+          <span class="cnm"><i class="sw" style="background:var(--dim)"></i>Passou a cair em STAR ou Penhora</span>
+          <span class="ctrack"><i class="cbar" style="width:17%;background:var(--dim)"></i></span>
+          <span class="cpp num">1,9 pp</span><span class="cvd">esperado</span>
+        </div>
+        <div class="cause">
+          <span class="cnm"><i class="sw" style="background:var(--critical)"></i>Mesmo portão, mesmo modelo, decisão diferente</span>
+          <span class="ctrack"><i class="cbar" style="width:10.7%;background:var(--critical)"></i></span>
+          <span class="cpp num">1,2 pp</span><span class="cvd flag">investigar</span>
+        </div>
+      </div>
+
+      <p class="alert">
+        Desses, <b>165</b> clientes oscilaram mais de uma vez. Ir e voltar não é evolução de
+        estado — é ruído, e é o indicador mais forte de defeito nesta tela.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ NÍVEL 3 ═══ -->
+  <section class="band" id="sec-exc">
+    <div class="spine"><i class="node byp"></i><span class="gate-no">G1</span></div>
+    <div class="content">
+      <div class="head-row">
+        <h2>O que a Exceção faz com quem passa por ela</h2>
+        <span class="basis">n = 7.100 · 57% das janelas encerradas</span>
+      </div>
+      <p class="lead">
+        A vigência da Exceção é curta, então o mesmo cliente é avaliado pelos modelos antes
+        e depois dela. A decisão que o atalho suprimiu está no banco, deslocada no tempo —
+        e isso torna cada cliente seu próprio controle.
+      </p>
+
+      <div class="quads">
+        <div></div>
+        <div class="qh">Depois · reprovado</div>
+        <div class="qh">Depois · aprovado</div>
+
+        <div class="qr">Antes<br>reprovado</div>
+        <div class="q" style="--qc:var(--critical)">
+          <span class="qflow">Reprovado → reprovado</span>
+          <span class="qlb"><i class="qgl"></i>Furo temporário</span>
+          <span class="qpct">62%</span>
+          <span class="qn">4.402 clientes</span>
+          <span class="qrd">Entrou no produto sem nunca ser aprovável. A Exceção não mudou o risco — adiou.</span>
+        </div>
+        <div class="q" style="--qc:var(--good)">
+          <span class="qflow">Reprovado → aprovado</span>
+          <span class="qlb"><i class="qgl"></i>Rampa</span>
+          <span class="qpct">23%</span>
+          <span class="qn">1.633 clientes</span>
+          <span class="qrd">Ganhou tempo para construir histórico e passou a ser aprovável. A tese do produto se sustenta.</span>
+        </div>
+
+        <div class="qr">Antes<br>aprovado</div>
+        <div class="q" style="--qc:var(--serious)">
+          <span class="qflow">Aprovado → reprovado</span>
+          <span class="qlb"><i class="qgl"></i>Deteriorou</span>
+          <span class="qpct">3%</span>
+          <span class="qn">213 clientes</span>
+          <span class="qrd">Perdeu elegibilidade durante a janela. Pequeno, mas é a coorte de maior risco.</span>
+        </div>
+        <div class="q" style="--qc:var(--warning)">
+          <span class="qflow">Aprovado → aprovado</span>
+          <span class="qlb"><i class="qgl"></i>Desnecessária</span>
+          <span class="qpct">12%</span>
+          <span class="qn">852 clientes</span>
+          <span class="qrd">Os modelos aprovariam de qualquer forma. Cada caso custou uma análise humana a valor zero.</span>
+        </div>
+      </div>
+
+      <p class="caution">
+        <b>852 exceções não mudaram decisão nenhuma.</b> Como toda concessão passa por
+        análise humana por e-mail ou Teams, esse é o volume que pode sair do mecanismo sem
+        impacto na base — e o trabalho que deixa de ser gasto.
+      </p>
+
+      <h3 style="margin-top:34px">O que sustenta esses números</h3>
+      <div class="cov">
+        <div class="cov-r">
+          <span class="cov-l">Janelas encerradas no período</span>
+          <span class="cov-t"><i class="cov-f" style="width:100%"></i></span>
+          <span class="cov-v">12.400</span>
+        </div>
+        <div class="cov-r">
+          <span class="cov-l">…com decisão de modelo antes da vigência</span>
+          <span class="cov-t"><i class="cov-f" style="width:72%"></i></span>
+          <span class="cov-v">8.900 · 72%</span>
+        </div>
+        <div class="cov-r">
+          <span class="cov-l">…com decisão de modelo após o término</span>
+          <span class="cov-t"><i class="cov-f" style="width:77%"></i></span>
+          <span class="cov-v">9.600 · 77%</span>
+        </div>
+        <div class="cov-r">
+          <span class="cov-l"><strong>…com as duas — base desta tela</strong></span>
+          <span class="cov-t"><i class="cov-f" style="width:57%"></i></span>
+          <span class="cov-v">7.100 · 57%</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="spine"></div>
+    <div class="content" style="padding-bottom:0">
+      <footer>
+        Protótipo de leitura. Os números são fictícios e internamente consistentes; a
+        estrutura, os rótulos e as ressalvas são os que a versão real usaria. A espinha à
+        esquerda marca em que portão do fluxo cada bloco vive — G1 é o desvio da Exceção,
+        G4 é a avaliação de risco.
+      </footer>
+    </div>
+  </section>
+
+  </div>
+
+</div>
+
+<script>
+  const ANSWERS = {
+    drift: {
+      q: "Por que o M3 de crédito caiu 3,1 pp?",
+      a: "A queda está concentrada no TCD1 e começou na terceira semana de julho. O volume avaliado pelo M3 não mudou, então não é composição de população — é o próprio modelo decidindo diferente. Nenhum outro modelo se moveu no período.",
+      s: "getModelOverview · getVolatilityReport"
+    },
+    flip: {
+      q: "Os clientes recebem sempre a mesma resposta?",
+      a: "Não. 16.300 clientes tiveram resposta inconsistente no período. Quase tudo tem explicação — entrada e saída de janela de exceção responde por 11,2 pp dos 18,4 pp de flip. O que não tem explicação é 1,2 pp: mesmo portão, mesmo modelo, decisão diferente.",
+      s: "getVolatilityReport",
+      go: "sec-flip"
+    },
+    exc: {
+      q: "A Exceção está deixando entrar quem não deveria?",
+      a: "Em 62% dos casos, sim — foram reprovados pelos modelos antes e depois da janela. Mas 23% passaram a ser aprováveis depois dela, o que sustenta a tese de rampa. E 12% não precisavam da Exceção em momento nenhum.",
+      s: "getExceptionCounterfactual",
+      go: "sec-exc"
+    }
+  };
+
+  const reply = document.getElementById("reply");
+  document.querySelectorAll(".ask button").forEach(b => {
+    b.addEventListener("click", () => {
+      const d = ANSWERS[b.dataset.a];
+      document.querySelectorAll(".ask button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      document.getElementById("rq").textContent = d.q;
+      document.getElementById("ra").textContent = d.a;
+      document.getElementById("rs").textContent = "Fonte: " + d.s;
+      reply.hidden = false;
+      if (d.go) {
+        const t = document.getElementById(d.go);
+        const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        setTimeout(() => t.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }), 260);
+      }
+    });
+  });
+</script>
