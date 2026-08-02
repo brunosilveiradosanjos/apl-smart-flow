@@ -223,7 +223,8 @@ aprovação do M1" somando as duas dimensões. No domínio serão **tipos separa
 
 **b) O modelo é proxy de maturidade do cliente.** Modelos mais fracos atendem clientes
 novos ou recém-credenciados; mais fortes atendem vigentes ativos. Isso o torna uma
-**dimensão de segmentação disponível de imediato**, sem depender de MCC ou porte. Mas
+**dimensão de segmentação disponível de imediato**. Com as variáveis do input (§4.9b) a
+afirmação deixa de ser hipótese e passa a ser verificável. Mas
 comparar taxa de aprovação entre modelos é **viés de seleção** — populações diferentes,
 não performances comparáveis. O dashboard sinaliza isso onde a comparação aparecer.
 
@@ -244,8 +245,8 @@ Consequências:
   `hasResolvedEc`, e a UI rotula como *"sem EC resolvido (novo ou inativo)"*.
 - Existe um **viés de amostragem estrutural no produto**: clientes inativos são tratados
   como se fossem novos, e recebem sempre o modelo mais fraco (`M1`).
-- Afirmações do tipo *"a Exceção está concentrada em clientes novos"* são **inválidas**
-  sem uma fonte adicional que separe as duas populações (§11).
+- Afirmações do tipo *"a Exceção está concentrada em clientes novos"* eram **inválidas**
+  sem fonte adicional — **resolvido** pela `dataFiliacao` do input (§4.9a).
 
 Esse achado é um entregável em si: o produto tem um ponto cego de segmentação, além do
 ponto cego de decisão da §1.
@@ -346,10 +347,66 @@ o nível de titular é enganoso e o painel não deve oferecê-lo como corte.
 
 Dois desdobramentos, e o segundo é o mais valioso do projeto até aqui.
 
-**a) O input é fonte de dados ainda não explorada.** Tudo que este plano modelou veio do
-*output*. Se o input carrega atributos do cliente — porte, MCC, canal, vínculo de chave
-Pix (§`PRODUTO-TC.md` §3) — são exatamente as **variáveis explicativas** que faltam para
-segmentar de verdade. Vale mapear os campos antes da Fase 0.
+**a) O input carrega as variáveis explicativas que faltavam.** Tudo que este plano modelou
+até aqui veio do *output*. Campos confirmados na entrada:
+
+| Campo | Tipo | Papel na análise |
+|-------|------|------------------|
+| `id` | CPF/CNPJ | **PII** — só ele. Não sobe da infraestrutura (§3.2) |
+| `ec` | 10 dígitos, nullable | Chave do estabelecimento (§4.7) |
+| `mcc` | código de atividade | Setor. Cardinalidade alta — agrupar em famílias no painel |
+| `canalFiliacao` | categórico | **Como o cliente foi adquirido** |
+| `segmento` | varejo \| grandes contas | Binário, alto poder explicativo |
+| `cep3` | 3 primeiros dígitos | Região **já anonimizada na origem** |
+| `tipoPessoa` | PF \| PJ \| MEI | Perfil de risco distinto por tipo |
+| `dataFiliacao` | data | Tempo de casa — e mais que isso (§4.9) |
+| `faturamento` | numérico | Porte. Bucketizar para o painel |
+
+Notas de tratamento:
+
+- **`cep3` já vem anonimizado.** Três dígitos dão região sem chegar perto de endereço —
+  bom desenho da origem, e o único atributo geográfico disponível.
+- **`faturamento` é sensível comercialmente**, ainda que não seja PII. Decisão adotada: o
+  que vai ao LLM é **faixa**, não valor; o valor exato aparece na interface, que não passa
+  pelo modelo.
+- **`mcc` precisa de agrupamento.** Centenas de códigos viram lista inútil num filtro. O
+  painel oferece famílias de MCC, com o código cru disponível no drill-down.
+
+### 4.9. O que o input destrava
+
+Três coisas que estavam em aberto passam a ser respondíveis pelo próprio dado.
+
+**a) A ambiguidade do `ec` nulo se resolve.** A §4.3 registra que `ec = null` agrupa duas
+populações indistinguíveis: cliente novo e vigente inativo. Com `dataFiliacao` no input,
+elas se separam:
+
+| `ec` | `dataFiliacao` | Leitura |
+|------|----------------|---------|
+| nulo | recente ou ausente | **Cliente novo** — pedindo TC no ato da filiação |
+| nulo | antiga | **Vigente inativo** — já é cliente, fora da base ativa |
+| presente | qualquer | Estabelecimento ativo |
+
+Isso desfaz um ponto cego que atravessava todo o plano. Afirmações do tipo *"a Exceção
+está concentrada em clientes novos"*, que a §4.3 proibia, passam a ser verificáveis.
+
+**b) "O modelo é proxy de maturidade" vira hipótese testável.** A §4.2b assume isso sem
+prova. Com `dataFiliacao`, `faturamento`, `segmento` e `tipoPessoa`, dá para verificar o
+que de fato determina M1, M2 ou M3 — e **inferir o critério de roteamento dos dados**, em
+vez de esperar que alguém o documente. Se a hipótese não se confirmar, é achado.
+
+**c) O viés de seleção deixa de ser só um aviso.** A §6.2 hoje se limita a avisar que as
+taxas entre modelos não se comparam, porque as populações diferem. Com as variáveis do
+input, a comparação passa a ser possível **dentro do mesmo estrato** — mesmo segmento,
+mesma faixa de faturamento, mesmo tipo de pessoa. Comparação estratificada é resposta;
+aviso é só ressalva.
+
+E dois ganhos diretos nos painéis:
+
+- **O quadrante *Aprovado → Aprovado* ganha rosto.** Deixa de ser "852 exceções
+  desnecessárias" e passa a ser *"concentradas em grandes contas do canal X"* — o que
+  torna a recomendação acionável em vez de estatística
+- **`canalFiliacao` é candidato a explicar a Exceção.** Se um canal específico concentra
+  pedidos, é achado de processo, não de risco
 
 **b) O teste de flip intra-regime deixa de ser inferência.** A §6.6 define flip
 intra-regime como "mesmo portão, mesmo modelo, decisão diferente" — o que sempre carregou
@@ -875,19 +932,19 @@ Hipóteses adotadas para não bloquear a Fase 0.
    *Hipótese adotada: dias a poucas semanas.*
 5. **A reavaliação após a expiração é automática** ou depende de nova solicitação? Muda a
    interpretação da taxa de expulsão. *Hipótese adotada: nova consulta espontânea.*
-6. **Existe fonte que separe cliente novo de vigente inativo** quando `ec` é nulo? Sem
-   ela, as duas populações permanecem agrupadas e o dashboard não pode afirmar qual
-   predomina. *Hipótese adotada: não disponível; rótulo conjunto.*
+6. ~~Fonte que separe cliente novo de vigente inativo~~ — **resolvido**: `dataFiliacao`
+   do input separa as duas populações (§4.9a).
 7. **Existe outcome financeiro** (inadimplência, fraude confirmada, churn) e em que
    janela? Em pesquisa pelo time. Não bloqueia: **P3** opera com a taxa de expulsão
    pós-expiração (§6.7) até que exista. *Hipótese adotada: ausente por ora, plugável.*
 8. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
    `ExplainDecision`, mas não bloqueiam. *Hipótese adotada: não disponíveis.*
-9. **Atributos de segmentação** — o **input** da tabela de log (§4.8) é o primeiro lugar a
-   olhar; pode já conter MCC, porte, canal ou vínculo de chave Pix. *Hipótese adotada:
-   sintéticos até o mapeamento dos campos de input.*
-9b. **A elegibilidade varia entre ECs do mesmo titular?** (§4.7) Se variar muito, agregar
-   por titular é média de coisas diferentes e o painel não deve oferecer esse corte.
-10. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
-    agora. Até lá o dashboard trata modelo como proxy de maturidade e sinaliza o viés de
-    seleção.
+9. ~~Atributos de segmentação~~ — **resolvido**: MCC, canal de filiação, segmento, CEP3,
+   tipo de pessoa, data de filiação e faturamento vêm no input (§4.8).
+10. ~~A elegibilidade varia entre ECs do mesmo titular?~~ — **resolvido: sim, cada EC tem
+   elegibilidade própria.** Confirma a unidade `(merchantRef, ec)` da §4.7 e torna o
+   agregado por titular uma soma de decisões distintas, oferecido só com rótulo explícito.
+11. **Critério de roteamento entre modelos** — informado como não prioritário. Com as
+    variáveis do input, deixa de depender de documentação: dá para **inferir dos dados**
+    o que determina M1, M2 ou M3 (§4.9b), e a comparação entre modelos passa a ser
+    possível dentro do mesmo estrato em vez de apenas desaconselhada.

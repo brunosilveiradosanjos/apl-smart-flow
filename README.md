@@ -103,7 +103,8 @@ Achados que mudaram o desenho e não estavam no enunciado:
   encerrou a decisão. O gate de saída é derivável sem mudar produção
 - `M1` de fraude **não é** o `M1` de crédito — mesmos nomes, espaços distintos
 - `ec` nulo **não** significa "não é cliente Cielo" — significa "não resolvido na base
-  ativa", e agrupa cliente novo com vigente inativo
+  ativa". Agrupava cliente novo com vigente inativo, ambiguidade que a **data de filiação**
+  do input desfaz
 - Um cliente é consultado **várias vezes por dia**, então contar por consulta descreveria
   tráfego de integração, não a base
 - A Exceção é **janela temporal**, não estado — o que torna o contrafactual medição direta
@@ -113,19 +114,19 @@ Achados que mudaram o desenho e não estavam no enunciado:
   o que a coloca como problema sistêmico, não curiosidade
 - O log guarda **input e output**, o que torna o flip sem explicação um teste exato — input
   idêntico, output diferente — em vez de inferência
+- O input traz **nove atributos** que transformam três hipóteses do plano em coisas
+  verificáveis, incluindo o critério de roteamento entre modelos, que passa a ser
+  inferível dos dados em vez de esperado de documentação
 
 ## Decisões em aberto
 
-**Fechadas:** provider **Anthropic** (Bedrock descartado) · **Tailwind v4** · anomalia
-`{tcd0:1, tcd1:0}` em **menos de 10% da base** · **um CPF/CNPJ tem N ECs, e o EC é estável**
-· toda solicitação é registrada **com input e output** em tabela de log.
+**Fechadas:** provider **Anthropic** · **Tailwind v4** · anomalia em **menos de 10% da
+base** · **N ECs por titular, EC estável, cada EC com elegibilidade própria** · log com
+**input e output** · **nove campos de input** mapeados (id, ec, MCC, canal de filiação,
+segmento, CEP3, tipo de pessoa, data de filiação, faturamento).
 
 **Em aberto:**
 
-1. Quais campos vêm no **input** da tabela de log — é onde devem estar as variáveis
-   explicativas que faltam (MCC, porte, canal, vínculo de chave Pix)
-2. A elegibilidade **varia entre ECs do mesmo titular**? Se variar, agregar por titular é
-   média de coisas diferentes
-3. Existe outcome financeiro? Decide se **P3** existe além do proxy de expulsão
-4. Campos da tabela de vigência, e se solicitações negadas são registradas
-5. Hex oficiais da marca e nome da família tipográfica
+1. Existe outcome financeiro? Decide se **P3** existe além do proxy de expulsão
+2. Campos da tabela de vigência, e se solicitações negadas são registradas
+3. Hex oficiais da marca e nome da família tipográfica

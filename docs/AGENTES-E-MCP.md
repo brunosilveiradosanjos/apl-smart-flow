@@ -100,6 +100,12 @@ por cliente distinto descreveria tráfego de integração, não a base.
 que sobe da infraestrutura — inclusive na consulta por cliente específico, que é atendida
 sem que o CPF/CNPJ chegue ao modelo (§3.5).
 
+Os demais atributos do input (`PLANO-ENTREGA.md` §4.8) podem circular: MCC, canal de
+filiação, segmento, tipo de pessoa e data de filiação não são PII, e o `cep3` já vem
+anonimizado na origem. **Uma exceção:** `faturamento` é sensível comercialmente, então o
+que vai ao modelo é **faixa**, nunca valor — o valor exato aparece na interface, que não
+passa pelo LLM.
+
 **d) Toda tool devolve dado + como renderizar.** O retorno carrega a série já agregada e um
 descritor de visualização, para o front escolher o componente:
 
@@ -423,5 +429,5 @@ O skill `mcp-builder`, já instalado em `.claude/skills/`, cobre a construção 
    muda a prioridade dele nas fases.
 4. ~~Um cliente pode trocar de EC?~~ — **respondido: não.** Um CPF/CNPJ tem N ECs; o EC é
    estável. Consequência de unidade de análise em `PLANO-ENTREGA.md` §4.7.
-5. **Quais campos entram em "tudo que temos" do cliente** (§3.6) — se houver atributo de
-   cadastro fora do payload de elegibilidade, entra aqui.
+5. ~~Quais campos entram em "tudo que temos" do cliente~~ — **resolvido**: os nove campos
+   do input (`PLANO-ENTREGA.md` §4.8), com faturamento em faixa para o modelo.
