@@ -22,7 +22,8 @@ apl-smart-flow/
 │   └── web/                   React + Vite
 │
 ├── packages/
-│   └── contracts/             schemas Zod — fonte única de verdade
+│   ├── contracts/             schemas Zod — fonte única de verdade
+│   └── mcp-server/            servidor MCP — expõe os use cases a outros agentes
 │
 ├── docker-compose.yml         Postgres local
 ├── pnpm-workspace.yaml
@@ -32,8 +33,9 @@ apl-smart-flow/
 └── package.json
 ```
 
-Três pacotes só. `contracts` é folha (não depende de ninguém); `api` e `web` dependem
-dele e nunca um do outro.
+Quatro pacotes. `contracts` é folha (não depende de ninguém); `api`, `web` e `mcp-server`
+dependem dele e nunca um do outro — o `mcp-server` fala com a `api` por HTTP, não por
+import. Ver [`AGENTES-E-MCP.md`](./AGENTES-E-MCP.md) §5.3.
 
 ### Por que pnpm
 
@@ -280,8 +282,17 @@ Separados por fase. Nada é instalado antes de ser usado.
 
 | Pacote | Papel | Nota |
 |--------|-------|------|
-| `ai` | Vercel AI SDK — tool calling, streaming | Ver `PLANO-ENTREGA.md` §5.2 |
+| `ai` | Vercel AI SDK — tool calling, streaming, `maxSteps` | Ver `PLANO-ENTREGA.md` §5.2 |
 | `@ai-sdk/amazon-bedrock` **ou** `@ai-sdk/anthropic` | provider | **Decisão ainda aberta.** Instalar só um, atrás da port |
+
+### 5.3.1. `packages/mcp-server` — Fase 3
+
+| Pacote | Papel |
+|--------|-------|
+| `@modelcontextprotocol/sdk` | servidor MCP, transportes stdio e HTTP |
+| `zod` | reusa os schemas de `contracts` |
+
+Detalhamento em [`AGENTES-E-MCP.md`](./AGENTES-E-MCP.md).
 
 **Fase 5 — maturidade**
 
@@ -308,7 +319,7 @@ Separados por fase. Nada é instalado antes de ser usado.
 
 | Pacote | Papel |
 |--------|-------|
-| `@ai-sdk/react` | `useChat`, streaming, generative UI |
+| `@ai-sdk/react` | `useChat`, streaming, render de tool results (generative UI) |
 
 **Fase 4 — What-If**
 
