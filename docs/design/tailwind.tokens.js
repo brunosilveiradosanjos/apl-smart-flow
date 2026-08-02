@@ -21,30 +21,34 @@ const withAlpha = (v) => `rgb(from var(${v}) r g b / <alpha-value>)`;
 /** Valores crus — a fonte da verdade. O CSS de :root é gerado a partir daqui. */
 const raw = {
   light: {
-    brand: '#0057b8',
-    'brand-alt': '#00a758',
-    'brand-ink': '#003a7a',
+    blue: '#0a6aea',
+    cyan: '#00aeef',
+    navy: '#12263f',
+    lime: '#c8d400',
 
-    bg: '#f4f6f9',
+    bg: '#ffffff',
+    band: '#f0f2f4',
     surface: '#ffffff',
-    sunken: '#e8ecf2',
-    ink: '#0b1a2b',
-    'ink-2': '#44566b',
-    muted: '#7a8b9c',
-    line: '#d7dee7',
+    tint: '#eef2f7',
+    ink: '#12263f',
+    'ink-2': '#4a5a6a',
+    muted: '#7b8896',
+    line: '#dde3e9',
   },
   dark: {
-    brand: '#2e86e0',
-    'brand-alt': '#14a05f',
-    'brand-ink': '#4c9ee8',
+    blue: '#4a9bff',
+    cyan: '#33c3f2',
+    navy: '#eef3f8',
+    lime: '#c8d400',
 
-    bg: '#0a1119',
-    surface: '#101b26',
-    sunken: '#0d1620',
+    bg: '#0a1420',
+    band: '#0e1b2b',
+    surface: '#122236',
+    tint: '#17293e',
     ink: '#eef3f8',
-    'ink-2': '#a2b3c4',
-    muted: '#6d8095',
-    line: '#1c2b3a',
+    'ink-2': '#9fb1c4',
+    muted: '#6b7f94',
+    line: '#1e3048',
   },
   /** Semânticas: fixas nos dois modos, sempre acompanhadas de rótulo ou ícone. */
   status: {
@@ -70,15 +74,17 @@ module.exports = {
       },
 
       fontSize: {
-        display: ['clamp(29px, 4.4vw, 45px)', { lineHeight: '1.02', letterSpacing: '-0.035em', fontWeight: '760' }],
-        h2: ['clamp(19px, 2.4vw, 24px)', { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '660' }],
-        h3: ['15px', { lineHeight: '1.3', letterSpacing: '-0.008em', fontWeight: '620' }],
-        body: ['15px', { lineHeight: '1.55' }],
-        support: ['13px', { lineHeight: '1.5' }],
-        label: ['10px', { lineHeight: '1.4', letterSpacing: '0.14em' }],
+        display: ['clamp(30px, 4.4vw, 46px)', { lineHeight: '1.08', fontWeight: '700' }],
+        h2: ['clamp(21px, 2.6vw, 30px)', { lineHeight: '1.18', fontWeight: '700' }],
+        h3: ['17px', { lineHeight: '1.3', fontWeight: '600' }],
+        body: ['16px', { lineHeight: '1.55' }],
+        support: ['14px', { lineHeight: '1.5' }],
+        label: ['11px', { lineHeight: '1.4', letterSpacing: '0.12em' }],
       },
 
-      borderRadius: { none: '0', sm: '2px', DEFAULT: '3px' },
+      // linguagem de forma da Cielo: botões em pílula, cantos generosos nos cartões
+      borderRadius: { none: '0', sm: '8px', DEFAULT: '12px', lg: '16px', full: '9999px' },
+      boxShadow: { card: '0 2px 14px rgba(18,38,63,.07)' },
     },
   },
 

@@ -3,215 +3,248 @@
 <style>
   :root {
     color-scheme: light;
-    --brand: #0057b8; --brand-alt: #00a758; --brand-ink: #003a7a;
-    --bg: #f4f6f9; --surface: #ffffff; --sunken: #e8ecf2;
-    --ink: #0b1a2b; --ink-2: #44566b; --muted: #7a8b9c; --line: #d7dee7;
-    --track: #cfe0f5;
-    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
-    --dim: #5c5a54;
-
+    --blue: #0a6aea; --blue-dk: #0f5cb5; --cyan: #00aeef; --navy: #12263f; --lime: #c8d400;
+    --bg: #ffffff; --band: #f0f2f4; --surface: #ffffff; --tint: #eef2f7;
+    --ink: #12263f; --ink-2: #4a5a6a; --muted: #7b8896; --line: #dde3e9;
+    --track: #dceaf9;
+    --good: #0ca30c; --serious: #ec835a; --critical: #d03b3b;
+    --badge-blue: #cfe4fb; --badge-lime: #eef2c4;
+    --dim: #8d9aa8;
     --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --shadow: 0 2px 14px rgba(18,38,63,.07);
+    --r-card: 16px; --r-cell: 12px; --r-chip: 999px;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
       color-scheme: dark;
-      --brand: #2e86e0; --brand-alt: #14a05f; --brand-ink: #4c9ee8;
-      --bg: #0a1119; --surface: #101b26; --sunken: #0d1620;
-      --ink: #eef3f8; --ink-2: #a2b3c4; --muted: #6d8095; --line: #1c2b3a;
-      --track: #14375c;
-      --dim: #8f8d86;
+      --blue: #4a9bff; --blue-dk: #2e7fd6; --cyan: #33c3f2; --navy: #eef3f8;
+      --bg: #0a1420; --band: #0e1b2b; --surface: #122236; --tint: #17293e;
+      --ink: #eef3f8; --ink-2: #9fb1c4; --muted: #6b7f94; --line: #1e3048;
+      --track: #16375a;
+      --badge-blue: #17395e; --badge-lime: #3a3f18;
+      --dim: #7d8b9a;
+      --shadow: 0 2px 14px rgba(0,0,0,.3);
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --brand: #2e86e0; --brand-alt: #14a05f; --brand-ink: #4c9ee8;
-    --bg: #0a1119; --surface: #101b26; --sunken: #0d1620;
-    --ink: #eef3f8; --ink-2: #a2b3c4; --muted: #6d8095; --line: #1c2b3a;
-    --track: #14375c;
-    --dim: #8f8d86;
+    --blue: #4a9bff; --blue-dk: #2e7fd6; --cyan: #33c3f2; --navy: #eef3f8;
+    --bg: #0a1420; --band: #0e1b2b; --surface: #122236; --tint: #17293e;
+    --ink: #eef3f8; --ink-2: #9fb1c4; --muted: #6b7f94; --line: #1e3048;
+    --track: #16375a;
+    --badge-blue: #17395e; --badge-lime: #3a3f18;
+    --dim: #7d8b9a;
+    --shadow: 0 2px 14px rgba(0,0,0,.3);
   }
 
   body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; -webkit-font-smoothing: antialiased; }
 
-  .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-  h1 { font-size: clamp(29px,4.4vw,45px); font-weight: 760; letter-spacing: -.035em; line-height: 1.02; text-wrap: balance; }
-  h2 { font-size: clamp(19px,2.4vw,24px); font-weight: 660; letter-spacing: -.02em; line-height: 1.15; }
-  h3 { font-size: 15px; font-weight: 620; letter-spacing: -.008em; }
-  .lead { color: var(--ink-2); font-size: 14.5px; max-width: 66ch; margin-top: 8px; }
+  h1 { font-size: clamp(30px,4.4vw,46px); font-weight: 700; color: var(--navy); line-height: 1.08; text-wrap: balance; }
+  h2 { font-size: clamp(21px,2.6vw,30px); font-weight: 700; color: var(--navy); line-height: 1.18; text-wrap: balance; }
+  h3 { font-size: 17px; font-weight: 600; color: var(--navy); }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 58ch; margin-top: 12px; }
+  .lede b, h1 b, h2 b { font-weight: 700; color: var(--navy); }
+  .sub { font-size: 15px; color: var(--ink-2); max-width: 64ch; margin-top: 10px; }
 
-  .page { max-width: 1120px; margin: 0 auto; padding: 0 22px 90px; }
-  .band { display: grid; grid-template-columns: 74px minmax(0,1fr); }
-  @media (max-width: 760px) { .band { grid-template-columns: 30px minmax(0,1fr); } }
-  .content { padding: 22px 0 46px; min-width: 0; }
+  /* faixas alternadas de largura total, como no site */
+  .strip { width: 100%; }
+  .strip.tinted { background: var(--band); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  .sec { padding: 64px 0; }
 
-  /* espinha: a sequência real de portões */
-  .rails { position: relative; }
-  .rails::before { content:""; position:absolute; left:15px; top:0; bottom:46px; width:2px; background: var(--line); }
-  @media (max-width:760px){ .rails::before{ left:6px; } }
-  .spine { position: relative; }
-  .node { position:absolute; left:10px; top:34px; width:12px; height:12px; background: var(--nc); --nc: var(--line); }
-  .node::after { content:""; position:absolute; left:16px; top:50%; width:30px; height:2px; background: var(--nc); transform: translateY(-1px); }
-  @media (max-width:760px){ .node{left:1px;} .node::after{display:none;} }
-  .node.on { --nc: var(--brand); } .node.byp { --nc: var(--warning); }
-  .gate-no { position:absolute; left:0; top:56px; width:32px; text-align:center; font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.08em; color: var(--muted); }
-  @media (max-width:760px){ .gate-no{ left:-10px; } }
+  /* chip + badge: o padrão de cabeçalho do site */
+  .eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .chip {
+    font-size: 14px; font-weight: 600; color: var(--blue);
+    border: 1.5px solid var(--blue); border-radius: var(--r-chip);
+    padding: 5px 16px;
+  }
+  .badge {
+    font-size: 12.5px; font-weight: 600; color: var(--navy);
+    background: var(--badge-blue); border-radius: var(--r-chip); padding: 4px 12px;
+  }
+  .badge.lime { background: var(--badge-lime); }
 
-  /* ═══ hero ═══ */
-  .hero { padding: 58px 0 26px; display:flex; flex-direction:column; gap:14px; }
-  .hero p { max-width: 60ch; color: var(--ink-2); font-size: 15.5px; }
-  .hero-meta { display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:8px; padding-top:16px; border-top:1px solid var(--line); }
+  .btn {
+    font: inherit; font-size: 15px; font-weight: 600;
+    background: var(--blue); color: #fff; border: 0;
+    border-radius: var(--r-chip); padding: 11px 26px; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; color: var(--blue); border: 1.5px solid var(--blue); }
+  .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+  .card { background: var(--surface); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 24px; }
+
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 
   /* ═══ funil ═══ */
-  .funnel { margin-top: 30px; }
+  .funnel { margin-top: 34px; }
+  .stage { padding: 6px 0; }
+  .stage-bar { height: 34px; border-radius: var(--r-chip); background: var(--blue); }
+  .stage.first .stage-bar { background: var(--navy); }
+  .stage.last .stage-bar { background: var(--good); }
+  .stage-lbl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 8px; }
+  .stage-n { font-family: var(--mono); font-size: 17px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+  .stage-d { font-size: 14.5px; color: var(--ink-2); }
+  .stage-pc { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
 
-  .stage { display:grid; grid-template-columns: minmax(0,1fr); gap:6px; padding: 4px 0; }
-  .stage-bar { height: 30px; background: var(--brand); position: relative; }
-  .stage.first .stage-bar { background: var(--ink); }
-  .stage.last .stage-bar { background: var(--brand-alt); }
-  .stage-lbl { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
-  .stage-n { font-family: var(--mono); font-size: 15px; font-weight: 640; font-variant-numeric: tabular-nums; }
-  .stage-d { font-size: 13px; color: var(--ink-2); }
-  .stage-pc { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
-
-  .exits { margin: 2px 0 2px 0; border-left: 2px solid var(--line); }
+  .exits { margin: 6px 0 6px 22px; padding-left: 20px; border-left: 2px solid var(--line); }
   .exit {
-    display:grid; grid-template-columns: 34px minmax(0,1fr) 22% 74px 96px;
-    align-items:center; gap: 12px;
-    padding: 7px 0 7px 14px;
+    display: grid; grid-template-columns: 40px minmax(0,1fr) 18% 78px 108px;
+    align-items: center; gap: 14px; padding: 9px 14px; border-radius: var(--r-cell);
   }
-  @media (max-width: 780px) {
-    .exit { grid-template-columns: 30px minmax(0,1fr) 74px; row-gap: 2px; }
-    .exit .exit-bar { display:none; }
-    .exit-to { grid-column: 2 / -1; }
+  @media (max-width: 800px) {
+    .exit { grid-template-columns: 40px minmax(0,1fr) 78px; row-gap: 3px; }
+    .exit .exit-bar { display: none; }
+    .exit-to { grid-column: 2 / -1; justify-content: flex-start !important; }
   }
-  .exit-g { font-family: var(--mono); font-size: 10px; font-weight:600; letter-spacing:.06em; color: var(--muted); }
-  .exit-n { font-size: 13.5px; color: var(--ink); min-width: 0; }
-  .exit-bar { height: 7px; background: var(--sunken); }
-  .exit-bar i { display:block; height: 7px; background: var(--dim); }
-  .exit-v { font-family: var(--mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
-  .exit-to { font-family: var(--mono); font-size: 10.5px; letter-spacing:.1em; text-transform: uppercase; display:flex; align-items:center; gap:7px; justify-content:flex-end; color: var(--muted); }
-  .exit-to i { width: 8px; height: 8px; flex:none; background: var(--dim); }
+  .exit-g {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600; color: var(--blue);
+    background: var(--tint); border-radius: 7px; padding: 4px 0; text-align: center;
+  }
+  .exit-g.blank { background: transparent; }
+  .exit-n { font-size: 14.5px; color: var(--ink); min-width: 0; }
+  .exit-bar { height: 8px; background: var(--tint); border-radius: var(--r-chip); }
+  .exit-bar i { display: block; height: 8px; border-radius: var(--r-chip); background: var(--dim); }
+  .exit-v { font-family: var(--mono); font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+  .exit-to { font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; justify-content: flex-end; color: var(--muted); }
+  .exit-to i { width: 9px; height: 9px; border-radius: 3px; background: var(--dim); flex: none; }
 
-  /* a única saída que aprova em vez de reprovar */
-  .exit.pass { background: var(--sunken); border-left: 3px solid var(--warning); margin-left: -2px; padding-left: 13px; }
-  .exit.pass .exit-n { font-weight: 620; }
-  .exit.pass .exit-bar i { background: var(--warning); }
-  .exit.pass .exit-to { color: var(--ink); }
-  .exit.pass .exit-to i { background: var(--warning); }
+  .exit.pass { background: var(--badge-lime); }
+  .exit.pass .exit-n { font-weight: 600; }
+  .exit.pass .exit-g { background: var(--lime); color: var(--navy); }
+  .exit.pass .exit-bar { background: rgba(18,38,63,.1); }
+  .exit.pass .exit-bar i { background: var(--navy); }
+  .exit.pass .exit-to { color: var(--navy); }
+  .exit.pass .exit-to i { background: var(--navy); }
 
-  .outcome { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 2px; margin-top: 22px; }
-  .oc { background: var(--surface); border-top: 3px solid var(--oc); padding: 15px 16px 16px; }
-  .oc-l { font-family: var(--mono); font-size: 10.5px; letter-spacing:.12em; text-transform:uppercase; color: var(--ink-2); display:flex; align-items:center; gap:7px; }
-  .oc-l i { width:9px; height:9px; background: var(--oc); flex:none; }
-  .oc-v { font-size: 31px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; margin-top: 4px; }
-  .oc-s { font-family: var(--mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .oc-b { font-size: 12.5px; color: var(--ink-2); margin-top: 8px; text-wrap: pretty; }
+  .outcome { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 18px; margin-top: 30px; }
+  .oc { background: var(--surface); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 22px 24px 24px; }
+  .oc-l { font-size: 13px; font-weight: 600; color: var(--ink-2); display: flex; align-items: center; gap: 9px; }
+  .oc-l i { width: 11px; height: 11px; border-radius: 4px; background: var(--oc); flex: none; }
+  .oc-v { font-size: 36px; font-weight: 700; color: var(--navy); letter-spacing: -.02em; line-height: 1.1; margin-top: 6px; }
+  .oc-s { font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .oc-b { font-size: 14px; color: var(--ink-2); margin-top: 12px; text-wrap: pretty; }
 
-  .flow-cap { margin-top: 18px; font-size: 13px; color: var(--ink-2); max-width: 70ch; }
+  /* ═══ matriz ═══ */
+  .mtx { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; }
+  .mtx-hd, .mtx-row { display: grid; grid-template-columns: 110px repeat(3,minmax(0,1fr)); gap: 10px; }
+  .mtx-hd span { font-size: 13px; font-weight: 600; color: var(--muted); padding-left: 18px; }
+  .mtx-dim { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--navy); }
+  .dim-key { width: 10px; height: 10px; border-radius: 4px; background: var(--kc); flex: none; }
+  .mcell { background: var(--surface); border-radius: var(--r-cell); box-shadow: var(--shadow); padding: 16px 18px 18px; display: flex; flex-direction: column; min-width: 0; }
+  .mcell.void { background: transparent; box-shadow: none; border: 1.5px dashed var(--line); align-items: center; justify-content: center; }
+  .mcell-v { font-size: 24px; font-weight: 700; color: var(--navy); letter-spacing: -.02em; }
+  .mcell-pop { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .mcell-rt { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+  .rt-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .rt-line b { font-family: var(--mono); color: var(--navy); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .trend { font-family: var(--mono); font-size: 12.5px; margin-top: 10px; color: var(--muted); }
+  .trend.dn { color: var(--critical); font-weight: 600; }
+  .void-note { font-size: 12.5px; color: var(--muted); text-align: center; }
 
-  /* ═══ blocos ═══ */
-  .head-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px; }
-  .basis { font-family: var(--mono); font-size:11px; color: var(--ink-2); background: var(--sunken); padding:3px 8px; font-variant-numeric: tabular-nums; }
+  /* em tela estreita a matriz vira lista: a dimensão vira cabeçalho da própria
+     linha e cada modelo ganha rótulo, em vez de espremer três colunas */
+  @media (max-width: 860px) {
+    .mtx-hd { display: none; }
+    .mtx-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .mtx-dim { padding-top: 12px; }
+    .mcell::before {
+      content: attr(data-model);
+      font-size: 12.5px; font-weight: 600; color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .mcell.void { flex-direction: row; gap: 6px; padding: 12px 18px; }
+  }
 
-  .mtx { margin-top: 22px; display:flex; flex-direction:column; gap:2px; }
-  .mtx-hd, .mtx-row { display:grid; grid-template-columns: 96px repeat(3, minmax(0,1fr)); gap:2px; }
-  .mtx-hd span { font-family: var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color: var(--muted); padding: 0 0 6px 12px; }
-  .mtx-dim { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color: var(--ink); background: var(--sunken); padding: 14px 12px; }
-  .dim-key { width:3px; align-self:stretch; background: var(--kc); }
-  .mcell { background: var(--surface); padding: 13px 14px 14px; display:flex; flex-direction:column; gap:2px; border-top: 2px solid var(--kc); min-width:0; }
-  .mcell.void { background:transparent; border-top-color:transparent; border-left:1px dashed var(--line); }
-  .mcell-v { font-size:21px; font-weight:640; letter-spacing:-.02em; }
-  .mcell-pop { font-family:var(--mono); font-size:11px; color: var(--muted); }
-  .mcell-rt { margin-top:8px; padding-top:8px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:3px; }
-  .rt-line { display:flex; justify-content:space-between; gap:8px; font-family:var(--mono); font-size:11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .rt-line b { color: var(--ink); font-weight:600; }
-  .trend { font-family:var(--mono); font-size:11.5px; margin-top:6px; color: var(--muted); }
-  .trend.dn { color: var(--critical); font-weight:600; }
-  .void-note { font-family:var(--mono); font-size:10.5px; color: var(--muted); align-self:center; text-align:center; padding: 0 8px; }
+  .note { margin-top: 22px; padding: 16px 20px; background: var(--badge-lime); border-radius: var(--r-cell); font-size: 14px; color: var(--ink-2); }
+  .note b { color: var(--navy); font-weight: 700; }
+  .note.blue { background: var(--tint); }
 
-  .caution { margin-top:16px; padding:12px 14px; background: var(--sunken); border-left:2px solid var(--warning); font-size:13px; color: var(--ink-2); }
-  .caution b { color: var(--ink); font-weight:620; }
-  .callout { margin-top:16px; padding:13px 15px; background: var(--surface); border-left:2px solid var(--brand); font-size:14px; color: var(--ink-2); }
-  .callout b { color: var(--ink); font-weight:620; }
+  /* ═══ medidor / causas ═══ */
+  .meter-bar { height: 34px; background: var(--track); border-radius: var(--r-chip); overflow: hidden; margin-top: 26px; }
+  .meter-fill { height: 100%; background: var(--blue); border-radius: var(--r-chip); }
+  .lgs { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 14px; }
+  .lg { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+  .sw { width: 11px; height: 11px; border-radius: 4px; flex: none; }
+  .lg b { font-family: var(--mono); color: var(--navy); font-weight: 700; font-variant-numeric: tabular-nums; }
 
-  .meter { margin-top:20px; }
-  .meter-bar { height:30px; background: var(--track); display:flex; }
-  .meter-fill { background: var(--brand); height:100%; }
-  .lgs { display:flex; flex-wrap:wrap; gap:6px 24px; margin-top:10px; }
-  .lg { display:flex; align-items:center; gap:7px; font-size:13px; color: var(--ink-2); }
-  .sw { width:10px; height:10px; flex:none; }
-  .lg b { font-family:var(--mono); color: var(--ink); font-weight:600; font-variant-numeric: tabular-nums; }
+  .ebar { display: flex; gap: 3px; height: 34px; margin-top: 26px; }
+  .ebar div:first-child { border-radius: var(--r-chip) 0 0 var(--r-chip); }
+  .ebar div:last-child { border-radius: 0 var(--r-chip) var(--r-chip) 0; }
+  .ebar-lb { display: flex; justify-content: space-between; gap: 14px; margin-top: 12px; }
 
-  .ebar { display:flex; gap:2px; height:30px; margin-top:18px; }
-  .ebar-lb { display:flex; justify-content:space-between; gap:14px; margin-top:9px; }
-  .causes { margin-top:14px; display:flex; flex-direction:column; }
-  .cause { display:grid; grid-template-columns: minmax(0,1fr) 32% 62px 86px; align-items:center; gap:14px; padding:10px 0; border-top:1px solid var(--line); }
-  .cause:last-child { border-bottom:1px solid var(--line); }
-  @media (max-width:720px){ .cause{ grid-template-columns: minmax(0,1fr) 62px; } .cause .ctrack,.cause .cvd{ display:none; } }
-  .cnm { display:flex; align-items:center; gap:9px; font-size:13.5px; min-width:0; }
-  .cbar { height:6px; display:block; }
-  .cpp { font-family:var(--mono); font-size:12.5px; text-align:right; font-variant-numeric: tabular-nums; }
-  .cvd { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; text-align:right; color: var(--muted); }
-  .cvd.flag { color: var(--critical); font-weight:620; }
-  .alert { margin-top:16px; padding:13px 15px; border:1px solid var(--critical); background: var(--surface); font-size:13.5px; color: var(--ink-2); }
-  .alert b { color: var(--ink); font-weight:620; font-family:var(--mono); font-variant-numeric: tabular-nums; }
+  .causes { margin-top: 22px; display: flex; flex-direction: column; gap: 4px; }
+  .cause { display: grid; grid-template-columns: minmax(0,1fr) 28% 68px 100px; align-items: center; gap: 16px; padding: 12px 16px; border-radius: var(--r-cell); }
+  .cause.flag { background: var(--surface); box-shadow: var(--shadow); }
+  @media (max-width:760px){ .cause{ grid-template-columns: minmax(0,1fr) 68px; } .cause .ctrack,.cause .cvd{ display:none; } }
+  .cnm { display: flex; align-items: center; gap: 10px; font-size: 14.5px; min-width: 0; }
+  .ctrack { height: 8px; background: var(--tint); border-radius: var(--r-chip); }
+  .cbar { display: block; height: 8px; border-radius: var(--r-chip); }
+  .cpp { font-family: var(--mono); font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cvd { font-size: 12.5px; font-weight: 600; text-align: right; color: var(--muted); }
+  .cvd.flag { color: var(--critical); }
 
-  .quads { margin-top:20px; display:grid; grid-template-columns: 108px 1fr 1fr; gap:2px; }
-  @media (max-width:760px){ .quads{ grid-template-columns:1fr; } .qh,.qr{ display:none!important; } .qflow{ display:block!important; } }
-  .qh { font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color: var(--muted); display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; }
-  .qr { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color: var(--muted); display:flex; align-items:center; justify-content:flex-end; text-align:right; padding-right:12px; }
-  .q { background: var(--surface); padding:15px 16px 16px; border-top:2px solid var(--qc); display:flex; flex-direction:column; gap:2px; }
-  .qflow { display:none; font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color: var(--muted); margin-bottom:4px; }
-  .qlb { display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color: var(--ink-2); }
-  .qgl { width:8px; height:8px; background: var(--qc); flex:none; }
-  .qpct { font-size:30px; font-weight:700; letter-spacing:-.03em; line-height:1.05; }
-  .qn { font-family:var(--mono); font-size:11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .qrd { font-size:12.5px; color: var(--ink-2); margin-top:5px; text-wrap: pretty; }
+  .alert { margin-top: 22px; padding: 16px 20px; background: var(--surface); border-radius: var(--r-cell); box-shadow: var(--shadow); border-left: 4px solid var(--critical); font-size: 14px; color: var(--ink-2); }
+  .alert b { color: var(--navy); font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-  .cov { margin-top:18px; display:flex; flex-direction:column; }
-  .cov-r { display:grid; grid-template-columns: minmax(0,1fr) 30% 104px; align-items:center; gap:14px; padding:8px 0; border-top:1px solid var(--line); }
-  .cov-r:last-child { border-bottom:1px solid var(--line); }
-  @media (max-width:700px){ .cov-r{ grid-template-columns: minmax(0,1fr) 104px; } .cov-r .cov-t{ display:none; } }
-  .cov-l { font-size:13px; color: var(--ink-2); }
-  .cov-t { height:6px; background: var(--track); }
-  .cov-f { height:6px; background: var(--brand); display:block; }
-  .cov-v { font-family:var(--mono); font-size:12px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
+  /* ═══ quadrantes ═══ */
+  .quads { margin-top: 26px; display: grid; grid-template-columns: 120px 1fr 1fr; gap: 12px; }
+  @media (max-width:800px){ .quads{ grid-template-columns:1fr; } .qh,.qr{ display:none!important; } .qflow{ display:block!important; } }
+  .qh { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+  .qr { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; align-items: center; justify-content: flex-end; text-align: right; padding-right: 4px; }
+  .q { background: var(--surface); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 20px 22px 22px; }
+  .qflow { display: none; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .qlb { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .qgl { width: 10px; height: 10px; border-radius: 4px; background: var(--qc); flex: none; }
+  .qpct { font-size: 36px; font-weight: 700; color: var(--navy); letter-spacing: -.025em; line-height: 1.08; margin-top: 4px; }
+  .qn { font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .qrd { font-size: 14px; color: var(--ink-2); margin-top: 10px; text-wrap: pretty; }
 
-  .agent { background: var(--surface); border:1px solid var(--line); padding:20px; }
-  .ask { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-  .ask button { font-family:var(--sans); font-size:13px; background: var(--bg); color: var(--ink-2); border:1px solid var(--line); padding:7px 12px; cursor:pointer; text-align:left; }
-  .ask button:hover { color: var(--ink); border-color: var(--brand); }
-  .ask button:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
-  .ask button[aria-pressed="true"] { border-color: var(--brand); color: var(--ink); }
-  .reply { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
-  .reply-q { font-size:13px; color: var(--muted); margin-bottom:8px; }
-  .reply-a { font-size:14.5px; max-width:64ch; }
-  .reply-src { margin-top:12px; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color: var(--muted); }
+  .cov { margin-top: 22px; display: flex; flex-direction: column; gap: 4px; }
+  .cov-r { display: grid; grid-template-columns: minmax(0,1fr) 26% 112px; align-items: center; gap: 16px; padding: 10px 0; }
+  @media (max-width:760px){ .cov-r{ grid-template-columns: minmax(0,1fr) 112px; } .cov-r .cov-t{ display:none; } }
+  .cov-l { font-size: 14px; color: var(--ink-2); }
+  .cov-t { height: 8px; background: var(--track); border-radius: var(--r-chip); }
+  .cov-f { display: block; height: 8px; border-radius: var(--r-chip); background: var(--blue); }
+  .cov-v { font-family: var(--mono); font-size: 13px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-  footer { margin-top:20px; padding-top:20px; border-top:1px solid var(--line); font-size:12.5px; color: var(--muted); max-width:76ch; }
+  /* ═══ agente ═══ */
+  .ask { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .ask button { font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); color: var(--blue); border: 1.5px solid var(--line); border-radius: var(--r-chip); padding: 9px 20px; cursor: pointer; text-align: left; }
+  .ask button:hover { border-color: var(--blue); }
+  .ask button[aria-pressed="true"] { border-color: var(--blue); background: var(--tint); }
+  .ask button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .reply { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line); }
+  .reply-q { font-size: 13.5px; color: var(--muted); margin-bottom: 8px; }
+  .reply-a { font-size: 16px; color: var(--ink); max-width: 62ch; }
+  .reply-src { margin-top: 14px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
 
-  @media (prefers-reduced-motion: reduce){ *{ transition:none!important; } }
+  footer { padding: 40px 0 72px; font-size: 13.5px; color: var(--muted); max-width: 76ch; }
+  footer code { font-family: var(--mono); font-size: 12.5px; }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
-<div class="page">
-
-  <header class="hero">
-    <span class="tag">TC · Vendeu tá na conta — elegibilidade</span>
-    <h1>Onde a base está sendo decidida</h1>
-    <p>
+<!-- ═══ HERO ═══ -->
+<div class="strip">
+  <div class="wrap sec" style="padding-bottom:40px">
+    <div class="eyebrow">
+      <span class="chip">Vendeu, Tá na Conta</span>
+      <span class="badge">Elegibilidade</span>
+    </div>
+    <h1>Onde a base <b>está sendo decidida</b></h1>
+    <p class="lede">
       Toda solicitação atravessa quatro portões em ordem. Três encerram a decisão antes que
-      qualquer modelo de risco seja consultado — e o primeiro deles não reprova: aprova.
+      qualquer modelo de risco seja consultado — e <b>o primeiro deles não reprova: aprova.</b>
     </p>
 
     <div class="funnel">
       <div class="stage first">
         <div class="stage-bar" style="width:100%"></div>
-        <div class="stage-lbl">
-          <span class="stage-n">118.700</span>
-          <span class="stage-d">clientes consultados no período</span>
-          <span class="stage-pc">100%</span>
-        </div>
+        <div class="stage-lbl"><span class="stage-n">118.700</span><span class="stage-d">clientes consultados no período</span><span class="stage-pc">100%</span></div>
       </div>
 
       <div class="exits">
@@ -231,11 +264,9 @@
 
       <div class="exits">
         <div class="exit">
-          <span class="exit-g">G2</span>
-          <span class="exit-n">Prevenção STAR</span>
+          <span class="exit-g">G2</span><span class="exit-n">Prevenção STAR</span>
           <span class="exit-bar"><i style="width:5.8%"></i></span>
-          <span class="exit-v">6.900</span>
-          <span class="exit-to"><i></i>Inelegível</span>
+          <span class="exit-v">6.900</span><span class="exit-to"><i></i>Inelegível</span>
         </div>
       </div>
 
@@ -246,11 +277,9 @@
 
       <div class="exits">
         <div class="exit">
-          <span class="exit-g">G3</span>
-          <span class="exit-n">Penhora e Fumaça</span>
+          <span class="exit-g">G3</span><span class="exit-n">Penhora e Fumaça</span>
           <span class="exit-bar"><i style="width:3.5%"></i></span>
-          <span class="exit-v">4.200</span>
-          <span class="exit-to"><i></i>Inelegível</span>
+          <span class="exit-v">4.200</span><span class="exit-to"><i></i>Inelegível</span>
         </div>
       </div>
 
@@ -261,25 +290,19 @@
 
       <div class="exits">
         <div class="exit">
-          <span class="exit-g">G4</span>
-          <span class="exit-n">Reprovado em crédito</span>
+          <span class="exit-g">G4</span><span class="exit-n">Reprovado em crédito</span>
           <span class="exit-bar"><i style="width:12%"></i></span>
-          <span class="exit-v">14.200</span>
-          <span class="exit-to"><i></i>Inelegível</span>
+          <span class="exit-v">14.200</span><span class="exit-to"><i></i>Inelegível</span>
         </div>
         <div class="exit">
-          <span class="exit-g"></span>
-          <span class="exit-n">Reprovado em fraude</span>
+          <span class="exit-g blank"></span><span class="exit-n">Reprovado em fraude</span>
           <span class="exit-bar"><i style="width:5%"></i></span>
-          <span class="exit-v">5.900</span>
-          <span class="exit-to"><i></i>Inelegível</span>
+          <span class="exit-v">5.900</span><span class="exit-to"><i></i>Inelegível</span>
         </div>
         <div class="exit">
-          <span class="exit-g"></span>
-          <span class="exit-n">Reprovado nos dois</span>
+          <span class="exit-g blank"></span><span class="exit-n">Reprovado nos dois</span>
           <span class="exit-bar"><i style="width:3.1%"></i></span>
-          <span class="exit-v">3.700</span>
-          <span class="exit-to"><i></i>Inelegível</span>
+          <span class="exit-v">3.700</span><span class="exit-to"><i></i>Inelegível</span>
         </div>
       </div>
 
@@ -289,7 +312,7 @@
       </div>
 
       <div class="outcome">
-        <div class="oc" style="--oc:var(--brand-alt)">
+        <div class="oc" style="--oc:var(--good)">
           <span class="oc-l"><i></i>Elegível</span>
           <span class="oc-v">83.800</span>
           <span class="oc-s">70,6% da base</span>
@@ -304,201 +327,184 @@
       </div>
     </div>
 
-    <p class="flow-cap">
+    <p class="sub" style="margin-top:26px">
       A única saída que aprova em vez de reprovar é a primeira. Para esses 12.400, a decisão
-      de risco não é sobreposta — ela nunca chega a existir, e é isso que o painel do
-      portão G1 mede.
+      de risco não é sobreposta — ela nunca chega a existir.
     </p>
+    <p class="kicker" style="margin-top:24px">1 jul – 31 jul 2026 · clientes distintos, última consulta · dados fictícios</p>
+  </div>
+</div>
 
-    <div class="hero-meta">
-      <span class="tag">1 jul – 31 jul 2026</span>
-      <span class="tag">Clientes distintos · última consulta</span>
-      <span class="tag">Dados fictícios</span>
-    </div>
-  </header>
+<!-- ═══ NÍVEL 1 ═══ -->
+<div class="strip tinted">
+  <div class="wrap sec">
+    <div class="eyebrow"><span class="chip">Portão 4</span><span class="badge">Avaliação de risco</span></div>
+    <h2>Quem decide os <b>95.200 que chegam aos modelos</b></h2>
+    <p class="sub">Fraude e crédito avaliam em paralelo, cada um com seu próprio conjunto de modelos. Os nomes coincidem, os modelos não.</p>
 
-  <div class="rails">
+    <div class="mtx">
+      <div class="mtx-hd"><span></span><span>M1</span><span>M2</span><span>M3</span></div>
 
-  <section class="band">
-    <div class="spine"><i class="node on"></i><span class="gate-no">G4</span></div>
-    <div class="content">
-      <div class="head-row">
-        <h2>Quem decide os 95.200 que chegam aos modelos</h2>
-        <span class="basis">80,2% da base</span>
-      </div>
-      <p class="lead">Fraude e crédito avaliam em paralelo, cada um com seu próprio conjunto de modelos. Os nomes coincidem, os modelos não.</p>
-
-      <div class="mtx">
-        <div class="mtx-hd"><span></span><span>M1</span><span>M2</span><span>M3</span></div>
-
-        <div class="mtx-row" style="--kc:var(--brand)">
-          <div class="mtx-dim"><i class="dim-key"></i>Fraude</div>
-          <div class="mcell"><span class="mcell-v">41.300</span><span class="mcell-pop">43,4% de quem chega</span>
-            <span class="mcell-rt"><span class="rt-line">TCD0 <b>88,2%</b></span><span class="rt-line">TCD1 <b>81,4%</b></span></span>
-            <span class="trend">30d −1,2 pp</span></div>
-          <div class="mcell"><span class="mcell-v">53.900</span><span class="mcell-pop">56,6% de quem chega</span>
-            <span class="mcell-rt"><span class="rt-line">TCD0 <b>94,1%</b></span><span class="rt-line">TCD1 <b>90,3%</b></span></span>
-            <span class="trend">30d +0,4 pp</span></div>
-          <div class="mcell void"><span class="void-note">fraude não usa M3</span></div>
-        </div>
-
-        <div class="mtx-row" style="--kc:var(--brand-alt)">
-          <div class="mtx-dim"><i class="dim-key"></i>Crédito</div>
-          <div class="mcell"><span class="mcell-v">38.700</span><span class="mcell-pop">40,7% de quem chega</span>
-            <span class="mcell-rt"><span class="rt-line">TCD0 <b>62,4%</b></span><span class="rt-line">TCD1 <b>51,8%</b></span></span>
-            <span class="trend">30d −0,8 pp</span></div>
-          <div class="mcell"><span class="mcell-v">34.100</span><span class="mcell-pop">35,8% de quem chega</span>
-            <span class="mcell-rt"><span class="rt-line">TCD0 <b>78,9%</b></span><span class="rt-line">TCD1 <b>70,2%</b></span></span>
-            <span class="trend">30d +0,2 pp</span></div>
-          <div class="mcell"><span class="mcell-v">22.400</span><span class="mcell-pop">23,5% de quem chega</span>
-            <span class="mcell-rt"><span class="rt-line">TCD0 <b>86,3%</b></span><span class="rt-line">TCD1 <b>79,6%</b></span></span>
-            <span class="trend dn">30d −3,1 pp</span></div>
-        </div>
+      <div class="mtx-row" style="--kc:var(--blue)">
+        <div class="mtx-dim"><i class="dim-key"></i>Fraude</div>
+        <div class="mcellNone" data-model="M1"><span class="mcell-v">41.300</span><span class="mcell-pop">43,4% de quem chega</span>
+          <span class="mcell-rt"><span class="rt-line">Mesmo dia <b>88,2%</b></span><span class="rt-line">Dia seguinte <b>81,4%</b></span></span>
+          <span class="trend">30 dias · −1,2 pp</span></div>
+        <div class="mcellNone" data-model="M2"><span class="mcell-v">53.900</span><span class="mcell-pop">56,6% de quem chega</span>
+          <span class="mcell-rt"><span class="rt-line">Mesmo dia <b>94,1%</b></span><span class="rt-line">Dia seguinte <b>90,3%</b></span></span>
+          <span class="trend">30 dias · +0,4 pp</span></div>
+        <div class="mcell void" data-model="M3"><span class="void-note">fraude não usa M3</span></div>
       </div>
 
-      <p class="caution">
-        <b>As taxas não se comparam entre modelos.</b> O modelo aplicado depende da maturidade
-        do cliente, então cada coluna atende uma população diferente. Ler "M3 aprova mais,
-        logo M3 é melhor" é viés de seleção. A comparação que vale é a de cada modelo consigo
-        mesmo ao longo do tempo — a linha de tendência.
-      </p>
-    </div>
-  </section>
-
-  <section class="band">
-    <div class="spine"></div>
-    <div class="content">
-      <div class="agent">
-        <span class="tag">Analista</span>
-        <h3 style="margin-top:8px">Pergunte, em vez de procurar</h3>
-        <p class="lead" style="margin-top:6px">O panorama é a única tela fixa. A descida para o detalhe acontece por pergunta.</p>
-        <div class="ask" role="group" aria-label="Perguntas sugeridas">
-          <button type="button" data-a="drift" aria-pressed="false">Por que o M3 de crédito caiu 3,1 pp?</button>
-          <button type="button" data-a="flip" aria-pressed="false">Os clientes recebem sempre a mesma resposta?</button>
-          <button type="button" data-a="exc" aria-pressed="false">A Exceção está deixando entrar quem não deveria?</button>
-        </div>
-        <div class="reply" id="reply" hidden>
-          <p class="reply-q" id="rq"></p>
-          <p class="reply-a" id="ra"></p>
-          <p class="reply-src" id="rs"></p>
-        </div>
+      <div class="mtx-row" style="--kc:var(--cyan)">
+        <div class="mtx-dim"><i class="dim-key"></i>Crédito</div>
+        <div class="mcellNone" data-model="M1"><span class="mcell-v">38.700</span><span class="mcell-pop">40,7% de quem chega</span>
+          <span class="mcell-rt"><span class="rt-line">Mesmo dia <b>62,4%</b></span><span class="rt-line">Dia seguinte <b>51,8%</b></span></span>
+          <span class="trend">30 dias · −0,8 pp</span></div>
+        <div class="mcellNone" data-model="M2"><span class="mcell-v">34.100</span><span class="mcell-pop">35,8% de quem chega</span>
+          <span class="mcell-rt"><span class="rt-line">Mesmo dia <b>78,9%</b></span><span class="rt-line">Dia seguinte <b>70,2%</b></span></span>
+          <span class="trend">30 dias · +0,2 pp</span></div>
+        <div class="mcellNone" data-model="M3"><span class="mcell-v">22.400</span><span class="mcell-pop">23,5% de quem chega</span>
+          <span class="mcell-rt"><span class="rt-line">Mesmo dia <b>86,3%</b></span><span class="rt-line">Dia seguinte <b>79,6%</b></span></span>
+          <span class="trend dn">30 dias · −3,1 pp</span></div>
       </div>
     </div>
-  </section>
 
-  <section class="band" id="sec-flip">
-    <div class="spine"><i class="node on"></i><span class="gate-no">G4</span></div>
-    <div class="content">
-      <div class="head-row">
-        <h2>O mesmo cliente, respostas diferentes</h2>
-        <span class="basis">41.200 com 2+ consultas · 35% da base</span>
-      </div>
-      <p class="lead">Um cliente pode ser consultado quantas vezes quiser no mesmo dia. Quando a resposta muda entre uma consulta e outra, quase sempre há explicação — o que importa é o que sobra depois de descontá-las.</p>
+    <p class="note">
+      <b>As taxas não se comparam entre modelos.</b> O modelo aplicado depende da maturidade do
+      cliente, então cada coluna atende uma população diferente. Ler "M3 aprova mais, logo M3 é
+      melhor" é viés de seleção. A comparação que vale é a de cada modelo consigo mesmo ao longo
+      do tempo — a linha de tendência.
+    </p>
+    <p class="note blue">
+      <b>Dia seguinte é o trilho mais restritivo</b>, apesar de parecer o mais fácil. Um cliente
+      pode receber no mesmo dia e não receber no dia seguinte — o contrário não deveria acontecer.
+    </p>
+  </div>
+</div>
 
-      <div class="meter">
-        <div class="meter-bar"><div class="meter-fill" style="width:76.2%"></div></div>
-        <div class="lgs">
-          <span class="lg"><i class="sw" style="background:var(--brand)"></i>Elegível em todas as consultas <b>52.100</b></span>
-          <span class="lg"><i class="sw" style="background:var(--track)"></i>Só em algumas <b>16.300</b></span>
-        </div>
-        <p class="callout"><b>16.300 clientes</b> receberam respostas diferentes dentro do mesmo período. A distância entre "elegível ao menos uma vez" e "elegível sempre" <em>é</em> a volatilidade — não são duas métricas concorrentes.</p>
-      </div>
-
-      <h3 style="margin-top:34px">De onde vêm os flips</h3>
-      <div class="ebar">
-        <div style="flex-grow:17.2;background:var(--dim)"></div>
-        <div style="flex-grow:1.2;background:var(--critical)"></div>
-      </div>
-      <div class="ebar-lb">
-        <span class="lg"><i class="sw" style="background:var(--dim)"></i>Esperado <b>17,2 pp</b></span>
-        <span class="lg"><i class="sw" style="background:var(--critical)"></i>Sem explicação <b>1,2 pp</b></span>
-      </div>
-
-      <div class="causes">
-        <div class="cause"><span class="cnm"><i class="sw" style="background:var(--dim)"></i>Entrada ou saída de janela de exceção</span><span class="ctrack"><i class="cbar" style="width:100%;background:var(--dim)"></i></span><span class="cpp">11,2 pp</span><span class="cvd">esperado</span></div>
-        <div class="cause"><span class="cnm"><i class="sw" style="background:var(--dim)"></i>Mudança de modelo aplicado</span><span class="ctrack"><i class="cbar" style="width:36.6%;background:var(--dim)"></i></span><span class="cpp">4,1 pp</span><span class="cvd">esperado</span></div>
-        <div class="cause"><span class="cnm"><i class="sw" style="background:var(--dim)"></i>Passou a cair em STAR ou Penhora</span><span class="ctrack"><i class="cbar" style="width:17%;background:var(--dim)"></i></span><span class="cpp">1,9 pp</span><span class="cvd">esperado</span></div>
-        <div class="cause"><span class="cnm"><i class="sw" style="background:var(--critical)"></i>Mesmo portão, mesmo modelo, decisão diferente</span><span class="ctrack"><i class="cbar" style="width:10.7%;background:var(--critical)"></i></span><span class="cpp">1,2 pp</span><span class="cvd flag">investigar</span></div>
-      </div>
-
-      <p class="alert">Desses, <b>165</b> clientes oscilaram mais de uma vez. Ir e voltar não é evolução de estado — é ruído, e é o indicador mais forte de defeito nesta tela.</p>
+<!-- ═══ AGENTE ═══ -->
+<div class="strip">
+  <div class="wrap sec">
+    <div class="eyebrow"><span class="chip">Analista</span><span class="badge lime">Pergunte em linguagem natural</span></div>
+    <h2>Pergunte, <b>em vez de procurar</b></h2>
+    <p class="sub">O panorama é a única tela fixa. A descida para o detalhe acontece por pergunta.</p>
+    <div class="ask" role="group" aria-label="Perguntas sugeridas">
+      <button type="button" data-a="drift" aria-pressed="false">Por que o M3 de crédito caiu 3,1 pp?</button>
+      <button type="button" data-a="flip" aria-pressed="false">Os clientes recebem sempre a mesma resposta?</button>
+      <button type="button" data-a="exc" aria-pressed="false">A Exceção está deixando entrar quem não deveria?</button>
     </div>
-  </section>
+    <div class="reply" id="reply" hidden>
+      <p class="reply-q" id="rq"></p>
+      <p class="reply-a" id="ra"></p>
+      <p class="reply-src" id="rs"></p>
+    </div>
+  </div>
+</div>
 
-  <section class="band" id="sec-exc">
-    <div class="spine"><i class="node byp"></i><span class="gate-no">G1</span></div>
-    <div class="content">
-      <div class="head-row">
-        <h2>O que a Exceção faz com quem passa por ela</h2>
-        <span class="basis">n = 7.100 · 57% das janelas encerradas</span>
+<!-- ═══ NÍVEL 2 ═══ -->
+<div class="strip tinted" id="sec-flip">
+  <div class="wrap sec">
+    <div class="eyebrow"><span class="chip">Estabilidade</span><span class="badge">41.200 com 2+ consultas</span></div>
+    <h2>O mesmo cliente, <b>respostas diferentes</b></h2>
+    <p class="sub">Um cliente pode ser consultado quantas vezes quiser no mesmo dia. Quando a resposta muda entre uma consulta e outra, quase sempre há explicação — o que importa é o que sobra depois de descontá-las.</p>
+
+    <div class="meter-bar"><div class="meter-fill" style="width:76.2%"></div></div>
+    <div class="lgs">
+      <span class="lg"><i class="sw" style="background:var(--blue)"></i>Elegível em todas as consultas <b>52.100</b></span>
+      <span class="lg"><i class="sw" style="background:var(--track)"></i>Só em algumas <b>16.300</b></span>
+    </div>
+    <p class="note blue"><b>16.300 clientes</b> receberam respostas diferentes dentro do mesmo período. A distância entre "elegível ao menos uma vez" e "elegível sempre" <em>é</em> a volatilidade — não são duas métricas concorrentes.</p>
+
+    <h3 style="margin-top:44px">De onde vêm os flips</h3>
+    <div class="ebar">
+      <div style="flex-grow:17.2;background:var(--dim)"></div>
+      <div style="flex-grow:1.2;background:var(--critical)"></div>
+    </div>
+    <div class="ebar-lb">
+      <span class="lg"><i class="sw" style="background:var(--dim)"></i>Esperado <b>17,2 pp</b></span>
+      <span class="lg"><i class="sw" style="background:var(--critical)"></i>Sem explicação <b>1,2 pp</b></span>
+    </div>
+
+    <div class="causes">
+      <div class="cause"><span class="cnm"><i class="sw" style="background:var(--dim)"></i>Entrada ou saída de janela de exceção</span><span class="ctrack"><i class="cbar" style="width:100%;background:var(--dim)"></i></span><span class="cpp">11,2 pp</span><span class="cvd">esperado</span></div>
+      <div class="cause"><span class="cnm"><i class="sw" style="background:var(--dim)"></i>Mudança de modelo aplicado</span><span class="ctrack"><i class="cbar" style="width:36.6%;background:var(--dim)"></i></span><span class="cpp">4,1 pp</span><span class="cvd">esperado</span></div>
+      <div class="cause"><span class="cnm"><i class="sw" style="background:var(--dim)"></i>Passou a cair em STAR ou Penhora</span><span class="ctrack"><i class="cbar" style="width:17%;background:var(--dim)"></i></span><span class="cpp">1,9 pp</span><span class="cvd">esperado</span></div>
+      <div class="cause flag"><span class="cnm"><i class="sw" style="background:var(--critical)"></i>Mesmo portão, mesmo modelo, decisão diferente</span><span class="ctrack"><i class="cbar" style="width:10.7%;background:var(--critical)"></i></span><span class="cpp">1,2 pp</span><span class="cvd flag">investigar</span></div>
+    </div>
+
+    <p class="alert">Desses, <b>165</b> clientes oscilaram mais de uma vez. Ir e voltar não é evolução de estado — é ruído, e é o indicador mais forte de defeito nesta tela.</p>
+  </div>
+</div>
+
+<!-- ═══ NÍVEL 3 ═══ -->
+<div class="strip" id="sec-exc">
+  <div class="wrap sec">
+    <div class="eyebrow"><span class="chip">Portão 1</span><span class="badge lime">Fluxo de Exceção</span></div>
+    <h2>O que a Exceção faz <b>com quem passa por ela</b></h2>
+    <p class="sub">A vigência da Exceção é curta, então o mesmo cliente é avaliado pelos modelos antes e depois dela. A decisão que o atalho suprimiu está no banco, deslocada no tempo — e isso torna cada cliente seu próprio controle.</p>
+
+    <div class="quads">
+      <div></div>
+      <div class="qh">Depois · reprovado</div>
+      <div class="qh">Depois · aprovado</div>
+
+      <div class="qr">Antes<br>reprovado</div>
+      <div class="q" style="--qc:var(--critical)">
+        <span class="qflow">Reprovado → reprovado</span>
+        <span class="qlb"><i class="qgl"></i>Furo temporário</span>
+        <span class="qpct">62%</span><span class="qn">4.402 clientes</span>
+        <p class="qrd">Entrou no produto sem nunca ser aprovável. A Exceção não mudou o risco — adiou.</p>
       </div>
-      <p class="lead">A vigência da Exceção é curta, então o mesmo cliente é avaliado pelos modelos antes e depois dela. A decisão que o atalho suprimiu está no banco, deslocada no tempo — e isso torna cada cliente seu próprio controle.</p>
-
-      <div class="quads">
-        <div></div>
-        <div class="qh">Depois · reprovado</div>
-        <div class="qh">Depois · aprovado</div>
-
-        <div class="qr">Antes<br>reprovado</div>
-        <div class="q" style="--qc:var(--critical)">
-          <span class="qflow">Reprovado → reprovado</span>
-          <span class="qlb"><i class="qgl"></i>Furo temporário</span>
-          <span class="qpct">62%</span><span class="qn">4.402 clientes</span>
-          <span class="qrd">Entrou no produto sem nunca ser aprovável. A Exceção não mudou o risco — adiou.</span>
-        </div>
-        <div class="q" style="--qc:var(--good)">
-          <span class="qflow">Reprovado → aprovado</span>
-          <span class="qlb"><i class="qgl"></i>Rampa</span>
-          <span class="qpct">23%</span><span class="qn">1.633 clientes</span>
-          <span class="qrd">Ganhou tempo para construir histórico e passou a ser aprovável. A tese do produto se sustenta.</span>
-        </div>
-
-        <div class="qr">Antes<br>aprovado</div>
-        <div class="q" style="--qc:var(--serious)">
-          <span class="qflow">Aprovado → reprovado</span>
-          <span class="qlb"><i class="qgl"></i>Deteriorou</span>
-          <span class="qpct">3%</span><span class="qn">213 clientes</span>
-          <span class="qrd">Perdeu elegibilidade durante a janela. Pequeno, mas é a coorte de maior risco.</span>
-        </div>
-        <div class="q" style="--qc:var(--warning)">
-          <span class="qflow">Aprovado → aprovado</span>
-          <span class="qlb"><i class="qgl"></i>Desnecessária</span>
-          <span class="qpct">12%</span><span class="qn">852 clientes</span>
-          <span class="qrd">Os modelos aprovariam de qualquer forma. Cada caso custou uma análise humana a valor zero.</span>
-        </div>
+      <div class="q" style="--qc:var(--good)">
+        <span class="qflow">Reprovado → aprovado</span>
+        <span class="qlb"><i class="qgl"></i>Rampa</span>
+        <span class="qpct">23%</span><span class="qn">1.633 clientes</span>
+        <p class="qrd">Ganhou tempo para construir histórico e passou a ser aprovável. A tese do produto se sustenta.</p>
       </div>
 
-      <p class="caution"><b>852 exceções não mudaram decisão nenhuma.</b> Como toda concessão passa por análise humana por e-mail ou Teams, esse é o volume que pode sair do mecanismo sem impacto na base — e o trabalho que deixa de ser gasto.</p>
-
-      <h3 style="margin-top:34px">O que sustenta esses números</h3>
-      <div class="cov">
-        <div class="cov-r"><span class="cov-l">Janelas encerradas no período</span><span class="cov-t"><i class="cov-f" style="width:100%"></i></span><span class="cov-v">12.400</span></div>
-        <div class="cov-r"><span class="cov-l">…com decisão de modelo antes da vigência</span><span class="cov-t"><i class="cov-f" style="width:72%"></i></span><span class="cov-v">8.900 · 72%</span></div>
-        <div class="cov-r"><span class="cov-l">…com decisão de modelo após o término</span><span class="cov-t"><i class="cov-f" style="width:77%"></i></span><span class="cov-v">9.600 · 77%</span></div>
-        <div class="cov-r"><span class="cov-l"><strong>…com as duas — base desta tela</strong></span><span class="cov-t"><i class="cov-f" style="width:57%"></i></span><span class="cov-v">7.100 · 57%</span></div>
+      <div class="qr">Antes<br>aprovado</div>
+      <div class="q" style="--qc:var(--serious)">
+        <span class="qflow">Aprovado → reprovado</span>
+        <span class="qlb"><i class="qgl"></i>Deteriorou</span>
+        <span class="qpct">3%</span><span class="qn">213 clientes</span>
+        <p class="qrd">Perdeu elegibilidade durante a janela. Pequeno, mas é a coorte de maior risco.</p>
+      </div>
+      <div class="q" style="--qc:var(--lime)">
+        <span class="qflow">Aprovado → aprovado</span>
+        <span class="qlb"><i class="qgl"></i>Desnecessária</span>
+        <span class="qpct">12%</span><span class="qn">852 clientes</span>
+        <p class="qrd">Os modelos aprovariam de qualquer forma. Cada caso custou uma análise humana a valor zero.</p>
       </div>
     </div>
-  </section>
 
-  <section class="band">
-    <div class="spine"></div>
-    <div class="content" style="padding-bottom:0">
-      <footer>
-        Protótipo de leitura. Números fictícios e internamente consistentes; estrutura,
-        rótulos e ressalvas são os que a versão real usaria. A paleta está na família da
-        marca Cielo mas <strong>não são os valores oficiais</strong> — o site não pôde ser
-        acessado deste ambiente, e a troca está isolada em <code>docs/design/TOKENS.md</code>.
-      </footer>
+    <p class="note"><b>852 exceções não mudaram decisão nenhuma.</b> Como toda concessão passa por análise humana por e-mail ou Teams, esse é o volume que pode sair do mecanismo sem impacto na base — e o trabalho que deixa de ser gasto.</p>
+
+    <h3 style="margin-top:44px">O que sustenta esses números</h3>
+    <div class="cov">
+      <div class="cov-r"><span class="cov-l">Janelas encerradas no período</span><span class="cov-t"><i class="cov-f" style="width:100%"></i></span><span class="cov-v">12.400</span></div>
+      <div class="cov-r"><span class="cov-l">…com decisão de modelo antes da vigência</span><span class="cov-t"><i class="cov-f" style="width:72%"></i></span><span class="cov-v">8.900 · 72%</span></div>
+      <div class="cov-r"><span class="cov-l">…com decisão de modelo após o término</span><span class="cov-t"><i class="cov-f" style="width:77%"></i></span><span class="cov-v">9.600 · 77%</span></div>
+      <div class="cov-r"><span class="cov-l"><strong>…com as duas — base desta tela</strong></span><span class="cov-t"><i class="cov-f" style="width:57%"></i></span><span class="cov-v">7.100 · 57%</span></div>
     </div>
-  </section>
+  </div>
+</div>
 
+<div class="strip tinted">
+  <div class="wrap">
+    <footer>
+      Protótipo de leitura. Números fictícios e internamente consistentes; estrutura, rótulos e
+      ressalvas são os que a versão real usaria. A paleta e a linguagem de forma foram lidas de
+      capturas do site da Cielo — <strong>não são os tokens oficiais</strong>, e a troca está
+      isolada em <code>docs/design/TOKENS.md</code>.
+    </footer>
   </div>
 </div>
 
 <script>
   const A = {
     drift: { q:"Por que o M3 de crédito caiu 3,1 pp?",
-      a:"A queda está concentrada no TCD1 e começou na terceira semana de julho. O volume avaliado pelo M3 não mudou, então não é composição de população — é o próprio modelo decidindo diferente. Nenhum outro modelo se moveu no período.",
+      a:"A queda está concentrada no trilho de dia seguinte e começou na terceira semana de julho. O volume avaliado pelo M3 não mudou, então não é composição de população — é o próprio modelo decidindo diferente. Nenhum outro modelo se moveu no período.",
       s:"getModelOverview · getVolatilityReport" },
     flip: { q:"Os clientes recebem sempre a mesma resposta?",
       a:"Não. 16.300 clientes tiveram resposta inconsistente no período. Quase tudo tem explicação — entrada e saída de janela de exceção responde por 11,2 pp dos 18,4 pp de flip. O que não tem explicação é 1,2 pp: mesmo portão, mesmo modelo, decisão diferente.",
