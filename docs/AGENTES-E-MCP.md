@@ -73,8 +73,7 @@ DTO no Nest e tipam o React.
 ```
 getModelOverview(period, segment?)            panorama dimensão × modelo
 getFunnel(track, period, unit, segment?)      composição do funil
-getEligibilityDispersion(period, groupBy?)    como a elegibilidade se distribui
-getEligibilityHistory(merchantRef, period)    linha do tempo de UM cliente
+getEligibilityHistory(merchantRef, period)    tudo sobre UM cliente no período
 getInconsistencyReport(period, groupBy?)      anomalia {tcd0:1, tcd1:0} e origem
 getVolatilityReport(period, groupBy?)         flips, decompostos por causa
 getExceptionCounterfactual(period, segment?)  pré-pós das janelas encerradas
@@ -84,8 +83,8 @@ compareCohorts(cohortA, cohortB)              perfil e outcome comparados
 ```
 
 `getEligibilityHistory` e `explainDecision` são vizinhas mas distintas: a primeira devolve
-a **sequência** de consultas de um cliente; a segunda destrincha **uma** decisão. Ambas
-detalhadas em §3.5 e §3.6.
+**tudo** sobre um cliente no período; a segunda destrincha **uma** decisão específica.
+Detalhadas em §3.6.
 
 Quatro regras de desenho que importam mais que a lista:
 
@@ -173,52 +172,37 @@ modelo para chegar até ela, que é exatamente o que se está evitando.
 confirmar com o time: **um cliente pode trocar de EC ao longo do tempo?** Se puder, o
 índice é `ec → merchantRef` com histórico, não um par fixo.
 
-### 3.6. `getEligibilityHistory` — a linha do tempo de um cliente
+### 3.6. `getEligibilityHistory` — tudo sobre um cliente no período
 
-É a versão individual de tudo que os painéis mostram no agregado. Devolve, para o período:
+As duas perguntas de exemplo do PO — *"qual o histórico de elegibilidade do cliente X no
+período Y"* e *"qual a dispersão de elegibilidade no período"* — são **a mesma feature**:
+resolver um cliente e devolver tudo que existe sobre ele no recorte.
+
+Uma tool, com `period` opcional. Sem período, devolve o histórico completo.
 
 | Bloco | Conteúdo |
 |-------|----------|
-| **Consultas** | cada uma com `consultedAt`, `exitGate`, modelos aplicados e o par `{tcd0, tcd1}` |
-| **Janelas de exceção** | vigências que cruzam o período, da tabela de vigência |
-| **Flips** | mudanças de decisão, já classificadas por causa (`ANALISE-TEMPORAL.md` §4) |
+| **Consultas** | toda consulta do período: `consultedAt`, `ec` (quando resolvido), `exitGate`, modelo de fraude e de crédito, `elegibilidadeFraudes`, `elegibilidadeCredito` e o par final |
+| **Janelas de exceção** | vigências que cruzam o período, com início, fim e se foram utilizadas |
+| **Flips** | mudanças de decisão, classificadas por causa (`ANALISE-TEMPORAL.md` §4) |
 | **Estados anômalos** | consultas em `{tcd0:1, tcd1:0}`, se houver |
-| **Contrafactual** | se houve janela encerrada, a decisão dos modelos antes e depois |
+| **Contrafactual** | se alguma janela encerrou no período, a decisão dos modelos antes e depois |
+| **Resumo** | total de consultas, distribuição entre os quatro estados, primeira e última decisão |
 
-Renderiza como faixa temporal: cada consulta é uma marca, a janela de exceção é um bloco
-sombreado, o flip é uma transição destacada. O PO vê num relance se aquele cliente entrou
-por exceção, se oscilou, e o que aconteceu quando a vigência acabou.
+A distribuição entre os quatro estados **daquele cliente** é o que responde a pergunta da
+dispersão: como as respostas se espalharam ao longo do período, em vez de um número único.
 
-É também a tela onde o **`getExceptionCounterfactual` deixa de ser estatística e vira
-caso concreto** — útil quando alguém questiona o número agregado.
+Renderiza como faixa temporal — cada consulta é uma marca, a vigência é um bloco sombreado,
+o flip é uma transição destacada. O PO vê num relance se o cliente entrou por exceção, se
+oscilou, e o que aconteceu quando a vigência acabou.
 
-### 3.7. `getEligibilityDispersion` — o que "dispersão" significa
+É também onde o **contrafactual deixa de ser estatística e vira caso concreto**, útil
+quando alguém questiona o número agregado.
 
-O termo é ambíguo, e leituras diferentes produzem painéis diferentes. A leitura que adoto
-como padrão é **composição**: como a base se distribui entre os estados possíveis de
-elegibilidade no período.
-
-```
-{tcd0:0, tcd1:1}   só dia seguinte      ← caso comum
-{tcd0:1, tcd1:1}   ambos os trilhos
-{tcd0:0, tcd1:0}   inelegível
-{tcd0:1, tcd1:0}   ⚠ anômalo
-```
-
-É a matriz TCD0 × TCD1 (`PLANO-ENTREGA.md` §6.4) com recorte por `groupBy` — gate de saída,
-modelo, status de EC, segmento.
-
-A tool devolve, além da composição, duas medidas que respondem leituras vizinhas de
-"dispersão" e evitam ida e volta:
-
-- **Concentração** — quanto da elegibilidade está concentrada em poucos segmentos
-  (participação do decil superior). Responde *"está espalhada ou concentrada?"*
-- **Estabilidade temporal** — desvio da taxa diária no período, calculado **fora da
-  população em janela de exceção**, porque a proporção em vigência varia sozinha e move a
-  taxa global sem que nada tenha mudado (`ANALISE-TEMPORAL.md` §5)
-
-Se a sua leitura de "dispersão" for outra — variância entre modelos, ou espalhamento
-geográfico, por exemplo — é troca barata agora e cara depois de a tool existir.
+> **Correção de escopo.** Eu havia desenhado uma `getEligibilityDispersion` separada, com
+> concentração por segmento e estabilidade temporal da base inteira. Não era o que foi
+> pedido, e saiu. A composição agregada entre os quatro estados continua existindo — como
+> painel, na matriz TCD0 × TCD1 (`PLANO-ENTREGA.md` §6.4), não como tool própria.
 
 ---
 
@@ -307,8 +291,7 @@ Sem isso, o agente traduz "TCD1" como jargão ou, pior, inventa o significado.
 /investigar-drift       um modelo caiu — decompõe e compara períodos
 /auditar-excecao        pré-pós + vigência declarada × aplicada
 /anomalia-trilhos       volume e origem de {tcd0:1, tcd1:0}
-/dispersao-periodo      composição, concentração e estabilidade
-/historico-cliente      linha do tempo de um cliente já resolvido
+/historico-cliente      tudo sobre um cliente já resolvido, no período
 ```
 
 O mesmo conjunto alimenta os evals (§7) e os botões de sugestão do chat. Escrito uma vez.
@@ -437,5 +420,5 @@ O skill `mcp-builder`, já instalado em `.claude/skills/`, cobre a construção 
    muda a prioridade dele nas fases.
 4. **Um cliente pode trocar de EC ao longo do tempo?** Define se o índice de resolução é
    um par fixo ou um mapa com histórico (§3.5).
-5. **O que "dispersão" significa para o PO** (§3.7). Adotei composição como leitura padrão;
-   confirmar antes de a tool existir.
+5. **Quais campos entram em "tudo que temos" do cliente** (§3.6) — se houver atributo de
+   cadastro fora do payload de elegibilidade, entra aqui.

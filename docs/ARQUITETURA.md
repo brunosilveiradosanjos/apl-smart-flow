@@ -104,7 +104,6 @@ apps/api/
 │   │   │   └── llm-provider.port.ts
 │   │   ├── funnel/get-funnel.usecase.ts
 │   │   ├── overview/get-model-overview.usecase.ts
-│   │   ├── dispersion/get-eligibility-dispersion.usecase.ts
 │   │   ├── merchant/
 │   │   │   ├── resolve-merchant.usecase.ts      CPF/CNPJ/EC → merchantRef
 │   │   │   └── get-eligibility-history.usecase.ts
