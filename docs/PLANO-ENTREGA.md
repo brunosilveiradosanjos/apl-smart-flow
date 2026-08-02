@@ -162,13 +162,14 @@ Regras confirmadas:
   duas dimensões.
 - **Gate 4 é paralelo e por trilho.**
 - **Combinação é AND por trilho.** Verificado contra todos os exemplos fornecidos.
-- **Monotonicidade esperada:** `tcd1 = 1` deveria implicar `tcd0 = 1`. O estado
-  `{tcd0:0, tcd1:1}` é inconsistente e ocorre em produção (§6.5).
 - **Semântica dos trilhos:** `TCD0` é a modalidade *"Hoje"* (mesmo dia) e `TCD1` a
   modalidade *"Amanhã"* (dia seguinte) — modalidades comerciais distintas do mesmo
-  produto, não estágios. Pela monotonicidade, **TCD1 é o trilho mais restritivo**, o que
-  é contraintuitivo e precisa ficar explícito na interface. Ver
-  [`PRODUTO-TC.md`](./PRODUTO-TC.md).
+  produto, não estágios. **TCD0 é o trilho mais restritivo**: antecipa mais e mais cedo,
+  logo expõe mais. Ver [`PRODUTO-TC.md`](./PRODUTO-TC.md).
+- **Monotonicidade esperada:** `tcd0 = 1` deveria implicar `tcd1 = 1` — quem passa no
+  mais difícil deveria passar no mais fácil. `{tcd0:0, tcd1:1}` é o **caso comum**
+  (elegível só ao dia seguinte); `{tcd0:1, tcd1:0}` é o **estado anômalo**, e ocorre em
+  produção (§6.5).
 - **Invariante do modelo:** sem `ec` resolvido e chegando ao gate 4, o cliente é sempre
   avaliado por `M1` nas duas dimensões. A recíproca **não** vale — `M1` também ocorre com
   `ec` presente. Vira regra de validação na ingestão e caso de teste.
@@ -292,7 +293,7 @@ aplicação e a UI enxergam:
   "elegibilidadeCredito": { "tcd0": 1, "tcd1": 0 },
   "elegibilidade":        { "tcd0": 1, "tcd1": 0 },
 
-  "isInconsistent": false,        // tcd1 === 1 && tcd0 === 0
+  "isInconsistent": false,        // tcd0 === 1 && tcd1 === 0
   "inconsistencySource": null     // FRAUD | CREDIT | BOTH
 }
 ```
@@ -442,36 +443,41 @@ Regras visuais:
 
 ### 6.4. Matriz TCD0 × TCD1
 
-|              | TCD1 = 1 | TCD1 = 0 |
-|--------------|----------|----------|
-| **TCD0 = 1** | ambos    | só TCD0  |
-| **TCD0 = 0** | ⚠ **inconsistente** | nenhum |
+|              | TCD1 = 1 (dia seguinte) | TCD1 = 0 |
+|--------------|-------------------------|----------|
+| **TCD0 = 1** (mesmo dia) | ambos | ⚠ **anômalo** |
+| **TCD0 = 0** | só dia seguinte — *caso comum* | nenhum |
 
-O quadrante `{tcd0:0, tcd1:1}` viola a monotonicidade esperada e é destacado como
-anomalia. Todos os quadrantes são clicáveis.
+O quadrante `{tcd0:1, tcd1:0}` viola a monotonicidade esperada e é destacado como
+anomalia: o cliente foi aprovado no trilho mais restritivo e reprovado no mais
+permissivo. Todos os quadrantes são clicáveis.
 
 ### 6.5. Painel de Inconsistência (P5)
 
-Requisito explícito: expor os casos em que `tcd1 = 1` e `tcd0 = 0`, que ocorrem em
-produção sem que deveriam.
+Requisito explícito: expor os casos em que `tcd0 = 1` e `tcd1 = 0` — o cliente foi
+aprovado no trilho **mais restritivo** (mesmo dia) e reprovado no **mais permissivo**
+(dia seguinte). Ocorre em produção sem que deveria.
+
+Atenção ao sentido: `{tcd0:0, tcd1:1}` é o **caso comum e legítimo** — elegível só ao dia
+seguinte. Inverter o predicado faria o painel apontar para a população normal.
 
 Duas propriedades reduzem o espaço de investigação antes de qualquer consulta ao banco.
 
-**A inconsistência é sempre herdada, nunca emergente.** Como a combinação é AND por
-trilho, `elegibilidade.tcd1 = 1` exige que *ambas* as dimensões tenham `tcd1 = 1`; e
-`elegibilidade.tcd0 = 0` exige que *ao menos uma* tenha `tcd0 = 0`. Essa dimensão passa
-então a ter `tcd0 = 0` e `tcd1 = 1` — já está inconsistente por si só. Não existe caso em
-que o estado inválido surja da composição de duas dimensões válidas.
+**A anomalia é sempre herdada, nunca emergente.** Como a combinação é AND por trilho,
+`elegibilidade.tcd0 = 1` exige que *ambas* as dimensões tenham `tcd0 = 1`; e
+`elegibilidade.tcd1 = 0` exige que *ao menos uma* tenha `tcd1 = 0`. Essa dimensão passa
+então a ter `tcd0 = 1` e `tcd1 = 0` — já está anômala por si só. Não existe caso em que o
+estado inválido surja da composição de duas dimensões válidas.
 
 A consequência é prática: **sempre há um modelo identificável na origem**.
 
 | Origem | Condição | Leitura |
 |--------|----------|---------|
-| `FRAUD` | `elegibilidadeFraudes` viola a monotonicidade | O modelo de fraude produz o estado inválido |
-| `CREDIT` | `elegibilidadeCredito` viola | O modelo de crédito produz |
+| `FRAUD` | `elegibilidadeFraudes` = `{tcd0:1, tcd1:0}` | O modelo de fraude produz o estado inválido |
+| `CREDIT` | `elegibilidadeCredito` = `{tcd0:1, tcd1:0}` | O modelo de crédito produz |
 | `BOTH` | ambas violam | Problema sistêmico |
 
-**Toda inconsistência nasce no gate 4.** Nos gates terminais as duas dimensões recebem
+**Toda anomalia nasce no gate 4.** Nos gates terminais as duas dimensões recebem
 valores idênticos (`{1,1}` na Exceção, `{0,0}` em STAR e Penhora/Fumaça), nenhum dos quais
 viola a monotonicidade. Logo `exitGate = RISK` é condição necessária.
 

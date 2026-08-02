@@ -28,7 +28,7 @@ decisão que a Exceção suprimiu não é inobservável — ela existe em outra 
 Linha do tempo de um cliente (cada marca é uma consulta)
 
   RISK    RISK   │ EXCEPTION  EXCEPTION  EXCEPTION │   RISK      RISK
-  {0,0}   {0,0}  │  {1,1}      {1,1}      {1,1}    │  {0,0}     {1,0}
+  {0,0}   {0,0}  │  {1,1}      {1,1}      {1,1}    │  {0,0}     {0,1}
  ───────────────┼──────────────────────────────────┼──────────────────►
       antes      │        janela de exceção         │      depois
    (contrafactual observado)                        (contrafactual observado)
@@ -233,8 +233,8 @@ PO precisa levar ao time responsável.
 pesa mais na percepção do cliente e merece destaque separado.
 
 **Trilho.** Flip só em TCD0, só em TCD1, ou em ambos. Combinado com a monotonicidade
-esperada (`tcd1=1 → tcd0=1`), um flip que cria estado inconsistente conecta este painel ao
-de inconsistência (P5).
+esperada (`tcd0=1 → tcd1=1`), um flip que produz o estado anômalo `{tcd0:1, tcd1:0}`
+conecta este painel ao de inconsistência (P5).
 
 **Padrão temporal.** A distinção mais diagnóstica:
 

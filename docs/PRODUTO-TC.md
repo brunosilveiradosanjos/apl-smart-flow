@@ -38,11 +38,23 @@ São **modalidades comerciais distintas do mesmo produto**, não estágios de um
 cliente pode ser elegível a uma e não à outra — é exatamente por isso que a elegibilidade
 é emitida em par.
 
-**TCD1 é o trilho mais restritivo.** Isso decorre da regra de monotonicidade confirmada
-pelo time (`tcd1 = 1` deveria implicar `tcd0 = 1`) e é consistente com todos os payloads
-de exemplo, em que `{tcd0:1, tcd1:0}` aparece como caso comum e `{tcd0:0, tcd1:1}` nunca
-aparece. Vale explicitar na interface: é contraintuitivo que "amanhã" seja mais difícil
-que "hoje", e o PO pode se confundir se o painel não disser.
+**TCD0 é o trilho mais restritivo**, e a razão é econômica: receber no mesmo dia antecipa
+mais valor e mais cedo, logo expõe mais a Cielo. Receber no dia seguinte é o degrau mais
+acessível.
+
+Disso decorre a monotonicidade: `tcd0 = 1` deveria implicar `tcd1 = 1` — quem passa no
+difícil deveria passar no fácil.
+
+| Estado | Leitura |
+|--------|---------|
+| `{tcd0:0, tcd1:1}` | **Caso comum.** Cliente recebe no dia seguinte, não no mesmo dia |
+| `{tcd0:1, tcd1:1}` | Elegível aos dois |
+| `{tcd0:0, tcd1:0}` | Inelegível |
+| `{tcd0:1, tcd1:0}` | ⚠ **Anômalo.** Passou no restritivo e falhou no permissivo |
+
+A letra miúda do site reforça o sentido: *"para alguns produtos e serviços com prazos de
+recebimento menores, você precisa ter sua conta bancária vinculada a uma chave Pix"* — o
+prazo menor é o TCD0, e o requisito extra é coerente com ele ser o mais difícil.
 
 ## 3. Condições operacionais
 
