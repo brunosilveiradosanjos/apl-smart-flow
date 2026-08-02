@@ -143,9 +143,10 @@ respondendo a uma pergunta diferente.
 | Unidade | Chave | Pergunta que responde |
 |---------|-------|----------------------|
 | **Consulta** | linha | Qual a carga operacional? (capacidade, custo, SLA) |
-| **Cliente-período** | `merchantRef` | Como está a base? *(padrão do dashboard)* |
-| **Cliente-dia** | `merchantRef, dia` | Como a base evolui no tempo, sem distorção de tráfego |
-| **Cliente-regime** | `merchantRef, regime` | O que muda quando o contexto de avaliação muda |
+| **Estabelecimento-período** | `(merchantRef, ec)` | Como está a base? *(padrão do dashboard)* |
+| **Estabelecimento-dia** | `(merchantRef, ec), dia` | Como a base evolui no tempo, sem distorção de tráfego |
+| **Estabelecimento-regime** | `(merchantRef, ec), regime` | O que muda quando o contexto de avaliação muda |
+| **Titular** | `merchantRef` | Agregação acima do estabelecimento — nunca o default (`PLANO-ENTREGA.md` §4.7) |
 
 Onde **regime** é a tripla `(exitGate, fraudModel, creditModel)` — o contexto que
 caracteriza *como* aquela decisão foi tomada. É a unidade que torna a análise de flip
@@ -221,6 +222,12 @@ A decomposição por causa é o que torna o painel acionável:
 | **Por mudança de modelo** | `fraudModel` ou `creditModel` mudou | Esperado. O cliente maturou, ganhou EC, virou ativo |
 | **Por mudança de gate** | Passou a cair em `STAR` ou `LIEN` | Esperado. Evento real no cliente |
 | **Intra-regime** | Mesmo `exitGate`, mesmos modelos, decisão diferente | **Inexplicável pelo dado.** É aqui que mora o problema |
+
+Com a confirmação de que a tabela de log guarda **input e output**
+(`PLANO-ENTREGA.md` §4.8), o quarto tipo deixa de ser inferido e passa a ser testado
+diretamente: **input idêntico, output diferente**. Resta a ressalva menor de que os
+modelos consultam dados externos ausentes do input — mas o espaço de explicação encolhe
+de "qualquer coisa mudou" para duas hipóteses investigáveis.
 
 O flip **intra-regime** é o alvo. Mesmo gate, mesmo modelo, mesma janela — e resposta
 diferente. As explicações possíveis são todas ruins: dado de entrada mudou sem que se

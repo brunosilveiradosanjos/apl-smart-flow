@@ -167,10 +167,14 @@ UI e pelo proxy. Se fosse tool, o argumento seria o CPF — e o CPF teria passad
 modelo para chegar até ela, que é exatamente o que se está evitando.
 
 **Índice de resolução.** `id → merchantRef` é só o hash. `ec → merchantRef` precisa de
-índice, porque o `ec` é nulo em parte das consultas do mesmo cliente
-(`PLANO-ENTREGA.md` §4.3) — o mapa se constrói dos pares observados na ingestão. Ponto a
-confirmar com o time: **um cliente pode trocar de EC ao longo do tempo?** Se puder, o
-índice é `ec → merchantRef` com histórico, não um par fixo.
+índice, porque o `ec` é nulo em parte das consultas do mesmo titular
+(`PLANO-ENTREGA.md` §4.3) — o mapa se constrói dos pares observados na ingestão.
+
+A cardinalidade está confirmada: **um CPF/CNPJ tem N ECs, e um EC nunca muda de titular.**
+Isso torna o índice um mapa estável muitos-para-um, sem necessidade de histórico. Mas
+levanta a questão de unidade de análise tratada em `PLANO-ENTREGA.md` §4.7 — buscar por
+CNPJ pode devolver vários estabelecimentos, e a interface precisa deixar claro qual está
+sendo exibido.
 
 ### 3.6. `getEligibilityHistory` — tudo sobre um cliente no período
 
@@ -409,16 +413,15 @@ O skill `mcp-builder`, já instalado em `.claude/skills/`, cobre a construção 
 
 ## 9. Pontos em aberto
 
-1. **Provider do LLM** — Bedrock ou Anthropic direto. Bedrock mantém o dado na conta AWS e
-   usa IAM em vez de chave; é o argumento mais forte em ambiente corporativo. Só muda o
-   adapter.
+1. ~~Provider do LLM~~ — **decidido: Anthropic direto**, Bedrock descartado. A
+   `LlmProviderPort` permanece, então trocar depois continua sendo troca de adapter.
 2. **O servidor MCP vai ser exposto além da máquina local?** Se sim, precisa de
    autenticação e a decisão de transporte deixa de ser trivial. Começar por stdio local
    resolve o caso do Claude Code sem abrir superfície.
 3. **Quem mais consumiria o MCP na Cielo?** Se houver um segundo time interessado, o
    servidor sobe de "demonstração de arquitetura" para entrega com usuário real — e isso
    muda a prioridade dele nas fases.
-4. **Um cliente pode trocar de EC ao longo do tempo?** Define se o índice de resolução é
-   um par fixo ou um mapa com histórico (§3.5).
+4. ~~Um cliente pode trocar de EC?~~ — **respondido: não.** Um CPF/CNPJ tem N ECs; o EC é
+   estável. Consequência de unidade de análise em `PLANO-ENTREGA.md` §4.7.
 5. **Quais campos entram em "tudo que temos" do cliente** (§3.6) — se houver atributo de
    cadastro fora do payload de elegibilidade, entra aqui.

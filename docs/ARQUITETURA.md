@@ -122,13 +122,13 @@ apps/api/
 │   │   │   │   ├── decision.mapper.ts
 │   │   │   │   ├── gate.mapper.ts        modelo* polimórfico → exitGate
 │   │   │   │   ├── merchant-ref.ts       hash do CPF/CNPJ
-│   │   │   │   ├── merchant-index.ts     ec → merchantRef (construído na ingestão)
+│   │   │   │   ├── merchant-index.ts     ec → merchantRef (N ECs por titular, EC estável)
 │   │   │   │   └── integrity.ts          validações de ingestão
 │   │   │   ├── queries/            ← SQL analítico, um arquivo por use case
 │   │   │   └── repositories/       implementam as ports
 │   │   ├── llm/
 │   │   │   ├── llm.module.ts
-│   │   │   └── providers/          bedrock.ts · anthropic.ts
+│   │   │   └── providers/          anthropic.ts
 │   │   └── config/                 env tipado
 │   │
 │   ├── agent/                      ← só wrappers. Sem banco, sem SQL, sem PII.
@@ -291,7 +291,7 @@ Separados por fase. Nada é instalado antes de ser usado.
 | Pacote | Papel | Nota |
 |--------|-------|------|
 | `ai` | Vercel AI SDK — tool calling, streaming, `maxSteps` | Ver `PLANO-ENTREGA.md` §5.2 |
-| `@ai-sdk/amazon-bedrock` **ou** `@ai-sdk/anthropic` | provider | **Decisão ainda aberta.** Instalar só um, atrás da port |
+| `@ai-sdk/anthropic` | provider — **decidido**, Bedrock descartado | Atrás da `LlmProviderPort`, então trocar depois continua barato |
 
 ### 5.3.1. `packages/mcp-server` — Fase 3
 
@@ -316,7 +316,7 @@ Detalhamento em [`AGENTES-E-MCP.md`](./AGENTES-E-MCP.md).
 |--------|-------|------|
 | `react` `react-dom` | | |
 | `vite` `@vitejs/plugin-react` | build | |
-| `tailwindcss` | estilos | **Ver a decisão de versão em §5.5** |
+| `tailwindcss` | estilos | **v4** — tokens em `docs/design/tokens.css`, sem `tailwind.config.js` |
 | `react-router` | rotas — cada nível e recorte tem URL própria | Drill-down compartilhável importa para um PO |
 | `@tanstack/react-query` | cache, revalidação, estados de carregamento | Dispensa gerenciador de estado global |
 | `lucide-react` | ícones de linha | Casa com o traço da Cielo |
@@ -335,20 +335,11 @@ Detalhamento em [`AGENTES-E-MCP.md`](./AGENTES-E-MCP.md).
 |--------|-------|
 | `react-hook-form` + `@hookform/resolvers` | formulário do simulador, validado pelos schemas Zod já existentes |
 
-### 5.5. Decisão pendente: Tailwind v3 ou v4
+### 5.5. Tailwind v4 — decidido
 
-O `docs/design/tailwind.tokens.js` que já entreguei está no **formato v3** (preset com
-`theme.extend` e plugin `addBase`). O v4 abandonou o `tailwind.config.js` em favor de
-`@theme` dentro do CSS.
-
-| | v3 | v4 |
-|---|---|---|
-| Config | `tailwind.config.js` | `@theme` no CSS |
-| Tokens atuais | funcionam como estão | precisam virar `tokens.css` |
-| Ecossistema | maduro | shadcn e afins ainda com atrito |
-
-Para projeto novo em 2026, **v4** é a escolha. Se você concordar, converto o arquivo de
-tokens — é trabalho pequeno e melhor fazer antes de existir componente.
+Os tokens estão em [`docs/design/tokens.css`](./design/tokens.css), no formato CSS-first
+do v4. Não existe `tailwind.config.js`. O tema troca por custom property em `:root`, não
+por classes `dark:` espalhadas — ver `design/TOKENS.md` §6.
 
 ### 5.6. O que deliberadamente não entra
 
@@ -420,11 +411,12 @@ pnpm lint    inclui a checagem de fronteiras
 
 ## 7. Pontos para você revisar
 
-1. **Tailwind v3 ou v4** (§5.5) — é a única decisão que gera retrabalho se ficar para depois
-2. **Vitest ou Jest** — recomendo Vitest; se o time padroniza Jest, alinho
-3. **Express ou Fastify** — recomendo Express por menor atrito
-4. **`sequelize-cli` ou `umzug`** para migrations — recomendo `sequelize-cli` por alinhamento
-5. **Turborepo entra?** — útil no CI, dispensável em três pacotes
-6. **Husky** — só se o time já usa hooks de pre-commit
-7. Algum pacote da §5.6 que você queira resgatar, ou algum interno da Cielo que deva entrar
+Decididos: **Tailwind v4**, **provider Anthropic** (Bedrock descartado).
+
+1. **Vitest ou Jest** — recomendo Vitest; se o time padroniza Jest, alinho
+2. **Express ou Fastify** — recomendo Express por menor atrito
+3. **`sequelize-cli` ou `umzug`** para migrations — recomendo `sequelize-cli` por alinhamento
+4. **Turborepo entra?** — útil no CI, dispensável em quatro pacotes
+5. **Husky** — só se o time já usa hooks de pre-commit
+6. Algum pacote da §5.6 que você queira resgatar, ou algum interno da Cielo que deva entrar
    no lugar de um destes

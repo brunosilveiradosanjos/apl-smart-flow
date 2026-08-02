@@ -49,10 +49,11 @@ existem em lugar nenhum. É esse o alvo.
 | Tema | Decisão | Consequência no desenho |
 |------|---------|-------------------------|
 | **Dados** | Sintéticos gerados | Gerador é artefato de primeira classe, não script descartável. Acesso a dados atrás de adapter, para trocar por base real sem reescrita. |
-| **LLM** | Indefinido | Provider abstraído atrás de interface. Com o AI SDK a troca Bedrock ↔ Anthropic ↔ Azure é uma linha. Decisão adiada sem custo. |
+| **LLM** | **Anthropic direto** (Bedrock descartado) | Continua atrás da `LlmProviderPort`, então trocar depois segue sendo troca de adapter. |
 | **Prazo** | Sem prazo rígido | Construção incremental por fases; cada fase é demonstrável isoladamente e recebe uma tag git. |
 | **Repositório** | Monorepo | `apps/api` + `apps/web` + `packages/contracts`. Tipagem end-to-end, um comando sobe tudo. |
-| **Design** | Tokens próprios, React + Tailwind | Lovable descartado. Tokens em `docs/design/` — ver [`TOKENS.md`](./design/TOKENS.md). |
+| **Design** | Tokens próprios, React + **Tailwind v4** | Lovable descartado. Tokens CSS-first em [`design/tokens.css`](./design/tokens.css); não existe `tailwind.config.js`. |
+| **Unidade de análise** | Estabelecimento `(merchantRef, ec)` | Um CPF/CNPJ tem N ECs e o EC é estável — titular vira nível de agregação, nunca o default (§4.7). |
 
 ### 2.1. Stack
 
@@ -64,8 +65,9 @@ Ferramentas padrão do time, adotadas sem substituição:
 | API | **NestJS** |
 | ORM / persistência | **Sequelize** |
 | Contratos e validação | **Zod** |
-| Front-end | **React** (+ Vite) |
+| Front-end | **React + Tailwind v4** (+ Vite) |
 | Banco | **PostgreSQL** (JSONB) |
+| LLM | **Anthropic** via Vercel AI SDK |
 
 **Sequelize e as agregações analíticas.** O ORM cobre modelos, migrations e acesso
 transacional. Mas as consultas que sustentam os painéis — window functions para
@@ -307,6 +309,61 @@ aplicação e a UI enxergam:
 ```
 
 Campos ainda dependentes de confirmação (§11): segmentação e outcome.
+
+### 4.7. Titular e estabelecimento — a unidade de análise volta
+
+Cardinalidade confirmada pelo time:
+
+> Um **CPF/CNPJ** pode ter **N ECs** atrelados. Um **EC nunca muda** de titular.
+
+Isso torna o índice `ec → merchantRef` um mapa estável muitos-para-um, sem histórico. Mas
+reabre a pergunta de granularidade da §4.5 num outro eixo — não mais consulta versus
+cliente, e sim **titular versus estabelecimento**.
+
+`merchantRef` é hash do `id`, portanto vive no nível do **titular**. Se um CNPJ tem cinco
+ECs e cada um recebe decisão própria, contar por `merchantRef` colapsaria cinco decisões
+possivelmente divergentes numa só.
+
+**Unidade adotada:** o sujeito da decisão é o par `(merchantRef, ec)` — o estabelecimento —
+e `(merchantRef, null)` quando o EC não foi resolvido na base ativa (§4.3). O titular é um
+nível de agregação **acima**, disponível para quem quiser somar, nunca o default.
+
+Consequências práticas:
+
+- Busca por CNPJ pode devolver **vários estabelecimentos**; a interface precisa listar e
+  deixar explícito qual está sendo exibido
+- Busca por EC devolve um só, sempre
+- Agregado por titular só faz sentido se as decisões dos ECs forem homogêneas — caso
+  contrário é média de coisas diferentes
+
+**Pergunta em aberto:** a elegibilidade varia entre ECs do mesmo titular? Se variar muito,
+o nível de titular é enganoso e o painel não deve oferecê-lo como corte.
+
+### 4.8. A tabela de log tem entrada e saída
+
+> Todas as solicitações são registradas, com **valores de input e output**, em tabela de
+> log histórico.
+
+Dois desdobramentos, e o segundo é o mais valioso do projeto até aqui.
+
+**a) O input é fonte de dados ainda não explorada.** Tudo que este plano modelou veio do
+*output*. Se o input carrega atributos do cliente — porte, MCC, canal, vínculo de chave
+Pix (§`PRODUTO-TC.md` §3) — são exatamente as **variáveis explicativas** que faltam para
+segmentar de verdade. Vale mapear os campos antes da Fase 0.
+
+**b) O teste de flip intra-regime deixa de ser inferência.** A §6.6 define flip
+intra-regime como "mesmo portão, mesmo modelo, decisão diferente" — o que sempre carregou
+a ressalva *"talvez algum dado a montante tenha mudado"*.
+
+Com o input registrado, a comparação vira direta:
+
+> **Input idêntico, output diferente.**
+
+Some a ambiguidade. Continua valendo uma ressalva menor e honesta: os modelos consultam
+dados externos que não estão no input (score, histórico), então input idêntico não é
+contexto de avaliação idêntico. Mas o espaço de explicação encolhe de "qualquer coisa
+mudou" para "algo fora do input mudou, ou o modelo não é determinístico" — e as duas
+hipóteses são investigáveis.
 
 ---
 
@@ -812,7 +869,7 @@ Hipóteses adotadas para não bloquear a Fase 0.
 2. **Existe registro das solicitações negadas**, ou a tabela guarda só as aprovadas? Se só
    as aprovadas, há viés de sobrevivência e não é possível medir a taxa de aprovação da
    análise manual nem aprender com as recusas. *Hipótese adotada: apenas aprovadas.*
-3. **Qual o volume mensal de solicitações de exceção?** Define se a Fase 5 se paga.
+3. **Qual o volume mensal de solicitações de exceção?** Define se a Fase 6 se paga.
    *Hipótese adotada: volume relevante o suficiente para justificar a triagem.*
 4. **Qual a duração típica da janela de exceção?** Define o horizonte da análise pré-pós.
    *Hipótese adotada: dias a poucas semanas.*
@@ -826,8 +883,11 @@ Hipóteses adotadas para não bloquear a Fase 0.
    pós-expiração (§6.7) até que exista. *Hipótese adotada: ausente por ora, plugável.*
 8. **Existem reason codes** para reprovação em STAR e Penhora/Fumaça? Enriqueceriam o
    `ExplainDecision`, mas não bloqueiam. *Hipótese adotada: não disponíveis.*
-9. **Atributos de segmentação** além de modelo e status de EC (MCC, porte, UF, tempo de
-   casa). *Hipótese adotada: sintéticos, plugáveis quando existirem.*
+9. **Atributos de segmentação** — o **input** da tabela de log (§4.8) é o primeiro lugar a
+   olhar; pode já conter MCC, porte, canal ou vínculo de chave Pix. *Hipótese adotada:
+   sintéticos até o mapeamento dos campos de input.*
+9b. **A elegibilidade varia entre ECs do mesmo titular?** (§4.7) Se variar muito, agregar
+   por titular é média de coisas diferentes e o painel não deve oferecer esse corte.
 10. **Critério de roteamento entre M2 e M3** — informado pelo time como não prioritário
     agora. Até lá o dashboard trata modelo como proxy de maturidade e sinaliza o viés de
     seleção.

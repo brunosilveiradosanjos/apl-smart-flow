@@ -89,8 +89,8 @@ descartado — adiciona falha parcial e custo sem ganho de tempo mensurável no 
 
 ## Stack
 
-Node · NestJS · Sequelize · Zod · PostgreSQL (JSONB) · React · Tailwind · Vercel AI SDK ·
-MCP SDK
+Node · NestJS · Sequelize · Zod · PostgreSQL (JSONB) · React · Tailwind v4 ·
+Vercel AI SDK (Anthropic) · MCP SDK
 
 Monorepo com quatro pacotes: `apps/api`, `apps/web`, `packages/contracts`,
 `packages/mcp-server`.
@@ -109,14 +109,23 @@ Achados que mudaram o desenho e não estavam no enunciado:
 - A Exceção é **janela temporal**, não estado — o que torna o contrafactual medição direta
   em vez de estimativa
 - A anomalia `{tcd0:1, tcd1:0}` é **sempre herdada** de um dos modelos, nunca emergente da
-  composição — logo sempre há um responsável identificável
+  composição — logo sempre há um responsável identificável. E pode chegar a **10% da base**,
+  o que a coloca como problema sistêmico, não curiosidade
+- O log guarda **input e output**, o que torna o flip sem explicação um teste exato — input
+  idêntico, output diferente — em vez de inferência
 
 ## Decisões em aberto
 
-1. Provider do LLM — Bedrock ou Anthropic direto
-2. Tailwind v3 ou v4 (única com custo de retrabalho se ficar para depois)
-3. Frequência real da anomalia `{tcd0:1, tcd1:0}` — muda o gerador sintético
-4. Existe outcome financeiro? Decide se **P3** existe além do proxy
-5. Campos da tabela de vigência, e se solicitações negadas são registradas
-6. Hex oficiais da marca e nome da família tipográfica
-7. Um cliente pode trocar de EC ao longo do tempo?
+**Fechadas:** provider **Anthropic** (Bedrock descartado) · **Tailwind v4** · anomalia
+`{tcd0:1, tcd1:0}` em **menos de 10% da base** · **um CPF/CNPJ tem N ECs, e o EC é estável**
+· toda solicitação é registrada **com input e output** em tabela de log.
+
+**Em aberto:**
+
+1. Quais campos vêm no **input** da tabela de log — é onde devem estar as variáveis
+   explicativas que faltam (MCC, porte, canal, vínculo de chave Pix)
+2. A elegibilidade **varia entre ECs do mesmo titular**? Se variar, agregar por titular é
+   média de coisas diferentes
+3. Existe outcome financeiro? Decide se **P3** existe além do proxy de expulsão
+4. Campos da tabela de vigência, e se solicitações negadas são registradas
+5. Hex oficiais da marca e nome da família tipográfica
