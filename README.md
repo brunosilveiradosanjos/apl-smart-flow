@@ -79,6 +79,7 @@ descartado — adiciona falha parcial e custo sem ganho de tempo mensurável no 
 
 | Documento | Conteúdo |
 |-----------|----------|
+| [`CONSOLIDADO.md`](docs/CONSOLIDADO.md) | **Tudo num arquivo só** — contexto, dados, arquitetura, IA, design, fases e decisões |
 | [`PLANO-ENTREGA.md`](docs/PLANO-ENTREGA.md) | Documento principal: problema, princípios, fluxo real, painéis, fases |
 | [`AGENTES-E-MCP.md`](docs/AGENTES-E-MCP.md) | Agentes, tools, MCP, guardrails, evals |
 | [`ARQUITETURA.md`](docs/ARQUITETURA.md) | Estrutura de pastas, regras de dependência, pacotes por fase |
