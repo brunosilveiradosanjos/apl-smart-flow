@@ -6,6 +6,10 @@ com camada de IA aplicada onde ela agrega e não como enfeite.
 **Estado atual: planejamento completo, nenhuma linha de código de aplicação.** Tudo neste
 repositório é definição, protótipo de leitura e material de decisão.
 
+> A documentação foi construída a partir de conversa e de seis payloads de exemplo, e
+> **ainda não foi confrontada com o código de origem**. O roteiro de validação está em
+> [`CONFRONTO-FONTES.md`](docs/CONFRONTO-FONTES.md).
+
 ---
 
 ## O problema
@@ -80,6 +84,7 @@ descartado — adiciona falha parcial e custo sem ganho de tempo mensurável no 
 | Documento | Conteúdo |
 |-----------|----------|
 | [`CONSOLIDADO.md`](docs/CONSOLIDADO.md) | **Tudo num arquivo só** — contexto, dados, arquitetura, IA, design, fases e decisões |
+| [`CONFRONTO-FONTES.md`](docs/CONFRONTO-FONTES.md) | Roteiro para validar a documentação contra os repositórios de origem |
 | [`PLANO-ENTREGA.md`](docs/PLANO-ENTREGA.md) | Documento principal: problema, princípios, fluxo real, painéis, fases |
 | [`AGENTES-E-MCP.md`](docs/AGENTES-E-MCP.md) | Agentes, tools, MCP, guardrails, evals |
 | [`ARQUITETURA.md`](docs/ARQUITETURA.md) | Estrutura de pastas, regras de dependência, pacotes por fase |
